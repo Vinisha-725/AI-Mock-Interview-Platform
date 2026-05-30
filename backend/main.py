@@ -1,5 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from config import load_local_env
+
+load_local_env()
+
 from routes import auth, resume, interview, analytics
 
 app = FastAPI(title="AI Interview Platform API")

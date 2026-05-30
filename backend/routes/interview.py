@@ -4,6 +4,7 @@ from models import (
     InterviewSession, SessionHistory, Question
 )
 from services.ai_service import ai_service
+from services.openai_service import openai_service
 from datetime import datetime
 from typing import Dict
 
@@ -39,14 +40,24 @@ async def start_interview(request: InterviewStartRequest):
     interview_sessions[interview_id] = session
     interview_questions[interview_id] = {}
     
-    # Get first question
-    question = ai_service.get_first_question(
+    # Generate the first question with OpenAI when configured, otherwise use the local bank.
+    question = openai_service.generate_interview_question(
+        interview_id=interview_id,
+        interview_type=request.interview_type,
         skills=request.skills,
         projects=request.projects,
         jd_text=request.jd_text,
-        interview_type=request.interview_type,
-        session_id=interview_id
+        question_number=1,
+        previous_questions=[],
     )
+    if question is None:
+        question = ai_service.get_first_question(
+            skills=request.skills,
+            projects=request.projects,
+            jd_text=request.jd_text,
+            interview_type=request.interview_type,
+            session_id=interview_id
+        )
     
     session.questions_asked.append(question.id)
     interview_questions[interview_id][question.id] = question
@@ -76,8 +87,14 @@ async def submit_answer(submission: AnswerSubmission):
     if current_question is None:
         raise HTTPException(status_code=400, detail="Question not found for this interview session")
     
-    # Evaluate the answer
-    score, feedback, is_correct = ai_service.evaluate_answer(current_question, submission.answer)
+    # Evaluate the answer with OpenAI when configured, otherwise use the local scorer.
+    openai_evaluation = openai_service.evaluate_answer(current_question, submission.answer)
+    if openai_evaluation:
+        score = openai_evaluation["score"]
+        feedback = openai_evaluation["feedback"]
+        is_correct = openai_evaluation["is_correct"]
+    else:
+        score, feedback, is_correct = ai_service.evaluate_answer(current_question, submission.answer)
     
     # Update session
     session.answers_given[current_question_id] = submission.answer
@@ -105,13 +122,29 @@ async def submit_answer(submission: AnswerSubmission):
     end_reason = None
     
     if should_continue:
-        next_question = ai_service.get_next_question(
-            session_id=interview_id,
-            previous_score=score,
+        previous_question_texts = [
+            interview_questions[interview_id][question_id].question
+            for question_id in session.questions_asked
+            if question_id in interview_questions.get(interview_id, {})
+        ]
+        next_question = openai_service.generate_interview_question(
+            interview_id=interview_id,
+            interview_type=session.interview_type,
             skills=session.skills,
             projects=session.projects,
-            interview_type=session.interview_type
+            jd_text=session.jd_text,
+            question_number=len(session.questions_asked) + 1,
+            previous_questions=previous_question_texts,
+            previous_score=score,
         )
+        if next_question is None:
+            next_question = ai_service.get_next_question(
+                session_id=interview_id,
+                previous_score=score,
+                skills=session.skills,
+                projects=session.projects,
+                interview_type=session.interview_type
+            )
         
         if next_question:
             session.questions_asked.append(next_question.id)

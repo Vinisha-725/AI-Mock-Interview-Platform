@@ -111,6 +111,23 @@ class ResumeParser:
             print(f"Error parsing DOCX: {e}")
             return ""
 
+    def extract_text(self, file_content: bytes, filename: str) -> str:
+        filename_lower = filename.lower()
+
+        if filename_lower.endswith('.pdf'):
+            text = self.extract_text_from_pdf(file_content)
+        elif filename_lower.endswith('.docx'):
+            text = self.extract_text_from_docx(file_content)
+        else:
+            try:
+                text = file_content.decode('utf-8')
+                print(f"Extracted {len(text)} characters from text file")
+            except UnicodeDecodeError:
+                text = ""
+                print("Could not decode file as text")
+
+        return self.normalize_text(text)
+
     def extract_skills(self, text: str) -> List[str]:
         # Comprehensive list of technical skills
         skill_keywords = [
@@ -352,23 +369,7 @@ class ResumeParser:
 
     def parse_resume(self, file_content: bytes, filename: str) -> ResumeUploadResponse:
         print(f"=== Starting resume parsing for: {filename} ===")
-        filename_lower = filename.lower()
-        
-        # Determine file type and extract text
-        if filename_lower.endswith('.pdf'):
-            text = self.extract_text_from_pdf(file_content)
-        elif filename_lower.endswith('.docx'):
-            text = self.extract_text_from_docx(file_content)
-        else:
-            # For other formats, try as text
-            try:
-                text = file_content.decode('utf-8')
-                print(f"Extracted {len(text)} characters from text file")
-            except:
-                text = ""
-                print("Could not decode file as text")
-        
-        text = self.normalize_text(text)
+        text = self.extract_text(file_content, filename)
         print(f"Total text length: {len(text)} characters")
         print(f"Text preview (first 500 chars): {text[:500]}")
 

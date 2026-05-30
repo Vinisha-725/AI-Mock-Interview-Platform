@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
 from datetime import datetime
 
@@ -24,6 +24,10 @@ class ResumeUploadResponse(BaseModel):
     education: List[Education]
     techStack: List[str]
     certifications: List[str]
+    match_score: int = 0
+    missing_skills: List[str] = Field(default_factory=list)
+    suggestions: List[str] = Field(default_factory=list)
+    ai_provider: str = "fallback"
 
 class Question(BaseModel):
     id: str
@@ -31,6 +35,7 @@ class Question(BaseModel):
     difficulty: str
     category: str
     follow_up_to: Optional[str] = None
+    source: str = "local"
 
 class InterviewStartRequest(BaseModel):
     skills: List[str]
