@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Landing from './pages/Landing'
+import Login from './pages/Login'
 import CandidateDashboard from './pages/CandidateDashboard'
 import RecruiterDashboard from './pages/RecruiterDashboard'
 import InterviewRoom from './pages/InterviewRoom'
@@ -13,6 +14,8 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Login />} />
         <Route path="/candidate-dashboard" element={<CandidateDashboard />} />
         <Route path="/dashboard" element={<CandidateDashboard />} />
         <Route path="/recruiter-dashboard" element={<RecruiterDashboard />} />

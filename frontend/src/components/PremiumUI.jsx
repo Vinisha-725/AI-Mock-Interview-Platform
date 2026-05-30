@@ -1,4 +1,4 @@
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Bell,
@@ -10,6 +10,7 @@ import {
   FileSearch,
   Gauge,
   LayoutDashboard,
+  LogOut,
   MessageSquareText,
   Mic,
   PanelLeft,
@@ -49,11 +50,11 @@ export function LandingNav() {
           <a href="#features">Features</a>
           <a href="#how">How It Works</a>
           <Link to="/candidate-dashboard">Dashboard</Link>
-          <Link to="/candidate-dashboard">Login</Link>
+          <Link to="/login">Login</Link>
         </nav>
         <div className="actions">
           <Link className="btn btn-ghost" to="/candidate-dashboard">View Demo</Link>
-          <Link className="btn btn-primary" to="/interview-room">Start Interview</Link>
+          <Link className="btn btn-primary" to="/login">Start Interview</Link>
         </div>
       </div>
     </header>
@@ -94,6 +95,15 @@ export function AppShell({ children, title, description }) {
 }
 
 export function Topbar() {
+  const navigate = useNavigate()
+  const user = JSON.parse(localStorage.getItem('hiresense_user') || 'null')
+  const initial = user?.name?.charAt(0)?.toUpperCase() || 'V'
+
+  const handleLogout = () => {
+    localStorage.removeItem('hiresense_user')
+    navigate('/login')
+  }
+
   return (
     <div className="topbar">
       <div className="search">
@@ -107,7 +117,10 @@ export function Topbar() {
         <button className="icon-btn" aria-label="Notifications">
           <Bell size={18} />
         </button>
-        <div className="avatar">V</div>
+        <button className="icon-btn" aria-label="Logout" onClick={handleLogout}>
+          <LogOut size={18} />
+        </button>
+        <div className="avatar">{initial}</div>
       </div>
     </div>
   )

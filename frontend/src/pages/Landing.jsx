@@ -19,7 +19,7 @@ export default function Landing() {
             <h1>Ace Every Interview With AI</h1>
             <p>Practice real-world interviews, receive personalized feedback, and measure your hiring readiness.</p>
             <div className="hero-actions">
-              <Link className="btn btn-primary" to="/interview-room">
+              <Link className="btn btn-primary" to="/login">
                 Start Mock Interview
                 <ArrowRight size={18} />
               </Link>
