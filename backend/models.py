@@ -55,6 +55,7 @@ class AnswerResponse(BaseModel):
     score: int
     feedback: str
     is_correct: bool
+    total_score: int
     next_question: Optional[Question] = None
     interview_ended: bool = False
     end_reason: Optional[str] = None

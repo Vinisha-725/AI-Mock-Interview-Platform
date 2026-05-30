@@ -26,31 +26,26 @@ export default function InterviewRoomFullScreen() {
   const recognitionRef = useRef(null)
   const videoRef = useRef(null)
 
-  // Request fullscreen on mount
-  useEffect(() => {
-    const requestFullscreen = async () => {
-      try {
-        if (document.documentElement.requestFullscreen) {
-          await document.documentElement.requestFullscreen()
-          setIsFullscreen(true)
-        }
-      } catch (err) {
-        console.log('Fullscreen request failed:', err)
+  const requestInterviewFullscreen = async () => {
+    try {
+      if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+        await document.documentElement.requestFullscreen()
+        setIsFullscreen(true)
       }
+    } catch (err) {
+      console.log('Fullscreen request failed:', err)
     }
-    requestFullscreen()
+  }
 
-    // Prevent escape from fullscreen
+  // Track fullscreen state without forcing it before a user action.
+  useEffect(() => {
     const handleFullscreenChange = () => {
-      if (!document.fullscreenElement && !interviewEnded) {
-        // Try to re-enter fullscreen
-        requestFullscreen()
-      }
+      setIsFullscreen(Boolean(document.fullscreenElement))
     }
 
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
-  }, [interviewEnded])
+  }, [])
 
   // Timer countdown
   useEffect(() => {
@@ -113,6 +108,7 @@ export default function InterviewRoomFullScreen() {
   }, [isRecording])
 
   const startInterviewSession = async (type) => {
+    await requestInterviewFullscreen()
     setInterviewType(type)
     setShowTypeSelector(false)
     
