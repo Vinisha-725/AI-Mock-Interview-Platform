@@ -8,6 +8,9 @@ import ResumeUpload from './pages/ResumeUpload'
 import Report from './pages/Report'
 import Settings from './pages/Settings'
 import CareerCoach from './pages/CareerCoach'
+import CandidateProfile from './pages/CandidateProfile'
+import RecruiterReport from './pages/RecruiterReport'
+import RecruiterSettings from './pages/RecruiterSettings'
 
 function App() {
   return (
@@ -27,6 +30,9 @@ function App() {
         <Route path="/reports" element={<Report />} />
         <Route path="/career-coach" element={<CareerCoach />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/candidate-profile/:id" element={<CandidateProfile />} />
+        <Route path="/recruiter-report/:id" element={<RecruiterReport />} />
+        <Route path="/recruiter-settings" element={<RecruiterSettings />} />
       </Routes>
     </Router>
   )

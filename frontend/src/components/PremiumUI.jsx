@@ -13,11 +13,14 @@ import {
   LogOut,
   MessageSquareText,
   Mic,
+  Settings,
+  ShieldCheck,
+  Star,
   PanelLeft,
   Search,
-  Settings,
   Sparkles,
   UserRound,
+  UsersRound,
 } from 'lucide-react'
 
 const sidebarItems = [
@@ -28,6 +31,16 @@ const sidebarItems = [
   { label: 'Reports', path: '/report/latest', icon: ChartNoAxesCombined },
   { label: 'Career Coach', path: '/career-coach', icon: BrainCircuit },
   { label: 'Settings', path: '/settings', icon: Settings },
+]
+
+const recruiterSidebarItems = [
+  { label: 'Overview', path: '/admin', icon: LayoutDashboard },
+  { label: 'Pipeline', path: '/admin#pipeline', icon: ChartNoAxesCombined },
+  { label: 'Candidates', path: '/admin#candidates', icon: UsersRound },
+  { label: 'Shortlist', path: '/admin#shortlist', icon: Star },
+  { label: 'Analytics', path: '/admin#analytics', icon: Gauge },
+  { label: 'Reports', path: '/recruiter-report/aarav-mehta', icon: FileSearch },
+  { label: 'Settings', path: '/recruiter-settings', icon: Settings },
 ]
 
 export function Logo() {
@@ -61,13 +74,15 @@ export function LandingNav() {
   )
 }
 
-export function AppShell({ children, title, description }) {
+export function AppShell({ children, title, description, variant = 'candidate' }) {
+  const navItems = variant === 'recruiter' ? recruiterSidebarItems : sidebarItems
+
   return (
     <div className="shell">
       <aside className="sidebar">
         <Logo />
         <nav className="sidebar-nav">
-          {sidebarItems.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon
             return (
               <NavLink key={item.label} to={item.path} className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
@@ -123,6 +138,19 @@ export function Topbar() {
         <div className="avatar">{initial}</div>
       </div>
     </div>
+  )
+}
+
+export function RecommendationBadge({ value }) {
+  const isStrong = value === 'Recommended for Hiring'
+  const isFit = value === 'Potential Fit'
+  const color = isStrong ? '#22c55e' : isFit ? '#38bdf8' : value === 'Needs Improvement' ? '#f59e0b' : '#fb7185'
+
+  return (
+    <span className="pill" style={{ color, borderColor: `${color}55`, background: `${color}1a` }}>
+      <ShieldCheck size={14} />
+      {value}
+    </span>
   )
 }
 

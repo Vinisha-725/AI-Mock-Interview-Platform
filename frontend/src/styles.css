@@ -616,6 +616,10 @@ button {
   margin-top: 24px;
 }
 
+.recruiter-overview {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
 .stat-card,
 .metric-card,
 .panel-card,
@@ -857,6 +861,97 @@ button {
   font-weight: 600;
 }
 
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mini-action {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: transform 180ms ease, background 180ms ease;
+}
+
+.mini-action:hover {
+  transform: translateY(-2px);
+  background: rgba(99, 102, 241, 0.16);
+}
+
+.pipeline-track {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.pipeline-stage {
+  position: relative;
+  min-height: 150px;
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--line);
+}
+
+.pipeline-node {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--stage-color) 24%, transparent);
+  border: 1px solid color-mix(in srgb, var(--stage-color) 52%, transparent);
+  color: var(--text);
+}
+
+.pipeline-node strong {
+  font-size: 24px;
+}
+
+.pipeline-stage h3 {
+  margin: 18px 0 0;
+}
+
+.pipeline-line {
+  position: absolute;
+  top: 52px;
+  left: 92px;
+  width: calc(100% - 78px);
+  height: 2px;
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.7), rgba(139, 92, 246, 0.12));
+}
+
+.candidate-rec {
+  align-items: flex-start;
+}
+
+.candidate-rec p {
+  max-width: 680px;
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+
+.skill-gap-list,
+.three-mini {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
 .skeleton {
   overflow: hidden;
   position: relative;
@@ -891,8 +986,17 @@ button {
   }
 
   .dashboard-grid,
+  .recruiter-overview,
   .metric-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .pipeline-track {
+    grid-template-columns: 1fr;
+  }
+
+  .pipeline-line {
+    display: none;
   }
 
   .feature-grid,
@@ -920,6 +1024,7 @@ button {
 
   .hero-proof,
   .dashboard-grid,
+  .recruiter-overview,
   .metric-grid {
     grid-template-columns: 1fr;
   }
