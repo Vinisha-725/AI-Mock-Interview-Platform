@@ -25,8 +25,8 @@ const sidebarItems = [
   { label: 'Job Description', path: '/resume-upload', icon: BriefcaseBusiness },
   { label: 'Mock Interview', path: '/interview-room', icon: Mic },
   { label: 'Reports', path: '/report/latest', icon: ChartNoAxesCombined },
-  { label: 'Career Coach', path: '/candidate-dashboard', icon: BrainCircuit },
-  { label: 'Settings', path: '/candidate-dashboard', icon: Settings },
+  { label: 'Career Coach', path: '/career-coach', icon: BrainCircuit },
+  { label: 'Settings', path: '/settings', icon: Settings },
 ]
 
 export function Logo() {

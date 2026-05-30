@@ -5,6 +5,8 @@ import RecruiterDashboard from './pages/RecruiterDashboard'
 import InterviewRoom from './pages/InterviewRoom'
 import ResumeUpload from './pages/ResumeUpload'
 import Report from './pages/Report'
+import Settings from './pages/Settings'
+import CareerCoach from './pages/CareerCoach'
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
         <Route path="/resume-analysis" element={<ResumeUpload />} />
         <Route path="/report/:id" element={<Report />} />
         <Route path="/reports" element={<Report />} />
+        <Route path="/career-coach" element={<CareerCoach />} />
+        <Route path="/settings" element={<Settings />} />
       </Routes>
     </Router>
   )
