@@ -51,6 +51,11 @@ export default function RecruiterDashboard() {
     setShortlistedIds((current) => {
       const exists = current.includes(candidate.id)
       showNotice(exists ? `${candidate.name} removed from shortlist` : `${candidate.name} shortlisted`)
+      if (!exists) {
+        window.requestAnimationFrame(() => {
+          document.getElementById('shortlist')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        })
+      }
       return exists ? current.filter((id) => id !== candidate.id) : [...current, candidate.id]
     })
   }

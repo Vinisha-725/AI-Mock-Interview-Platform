@@ -4,6 +4,8 @@ import { Bot, Clock3, Mic, MicOff, Send, X, Volume2, AlertCircle, CheckCircle2, 
 import { startInterview, submitAnswer, endInterview } from '../services/interview'
 
 export default function InterviewRoomFullScreen() {
+  const user = JSON.parse(localStorage.getItem('hiresense_user') || 'null')
+  const isRecruiter = user?.role === 'recruiter'
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [interviewId, setInterviewId] = useState(null)
   const [currentQuestion, setCurrentQuestion] = useState(null)
@@ -225,7 +227,7 @@ export default function InterviewRoomFullScreen() {
     } catch (err) {
       console.log('Exit fullscreen failed:', err)
     }
-    window.location.href = '/candidate-dashboard'
+    window.location.href = isRecruiter ? '/admin' : '/candidate-dashboard'
   }
 
   const toggleCamera = async () => {
@@ -255,26 +257,65 @@ export default function InterviewRoomFullScreen() {
   }
 
   if (showTypeSelector) {
+    const candidateOptions = [
+      {
+        type: 'ai',
+        icon: Bot,
+        title: 'AI Interview',
+        description: 'Questions based on your resume and skills with adaptive difficulty',
+      },
+      {
+        type: 'dsa',
+        icon: Volume2,
+        title: 'DSA Practice',
+        description: 'Data Structures and Algorithms coding questions',
+      },
+      {
+        type: 'aptitude',
+        icon: CheckCircle2,
+        title: 'Aptitude Test',
+        description: 'Quantitative and logical reasoning questions',
+      },
+    ]
+
+    const recruiterOptions = [
+      {
+        type: 'recruiter',
+        icon: Bot,
+        title: 'Recruiter Screening',
+        description: 'Practice candidate evaluation, shortlist decisions, and hiring recommendations',
+      },
+      {
+        type: 'recruiter',
+        icon: Volume2,
+        title: 'Hiring Manager Brief',
+        description: 'Explain AI recommendations, readiness scores, and candidate tradeoffs clearly',
+      },
+      {
+        type: 'recruiter',
+        icon: CheckCircle2,
+        title: 'Pipeline Review',
+        description: 'Answer questions about pipeline stages, candidate fit, and final-round decisions',
+      },
+    ]
+
+    const options = isRecruiter ? recruiterOptions : candidateOptions
+
     return (
       <div className="fullscreen-interview">
         <div className="interview-type-selector">
-          <h1>Select Interview Type</h1>
+          <h1>{isRecruiter ? 'Select Recruiter Practice Mode' : 'Select Interview Type'}</h1>
           <div className="type-options">
-            <button className="type-card" onClick={() => startInterviewSession('ai')}>
-              <Bot size={48} />
-              <h2>AI Interview</h2>
-              <p>Questions based on your resume and skills with adaptive difficulty</p>
-            </button>
-            <button className="type-card" onClick={() => startInterviewSession('dsa')}>
-              <Volume2 size={48} />
-              <h2>DSA Practice</h2>
-              <p>Data Structures and Algorithms coding questions</p>
-            </button>
-            <button className="type-card" onClick={() => startInterviewSession('aptitude')}>
-              <CheckCircle2 size={48} />
-              <h2>Aptitude Test</h2>
-              <p>Quantitative and logical reasoning questions</p>
-            </button>
+            {options.map((option) => {
+              const Icon = option.icon
+              return (
+                <button className="type-card" key={option.title} onClick={() => startInterviewSession(option.type)}>
+                  <Icon size={48} />
+                  <h2>{option.title}</h2>
+                  <p>{option.description}</p>
+                </button>
+              )
+            })}
           </div>
         </div>
       </div>

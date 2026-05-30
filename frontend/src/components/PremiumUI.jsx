@@ -36,8 +36,7 @@ const sidebarItems = [
 
 const recruiterSidebarItems = [
   { label: 'Overview', path: '/admin', icon: LayoutDashboard },
-  { label: 'Pipeline', path: '/admin#pipeline', icon: ChartNoAxesCombined },
-  { label: 'Candidates', path: '/admin#candidates', icon: UsersRound },
+  { label: 'Practice', path: '/interview-fullscreen', icon: Mic },
   { label: 'Shortlist', path: '/admin#shortlist', icon: Star },
   { label: 'Analytics', path: '/admin#analytics', icon: Gauge },
   { label: 'Reports', path: '/recruiter-report/aarav-mehta', icon: FileSearch },
@@ -80,12 +79,15 @@ export function AppShell({ children, title, description, variant = 'candidate' }
   const location = useLocation()
 
   useEffect(() => {
-    if (!location.hash) return
+    if (!location.hash) {
+      window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }))
+      return
+    }
 
     window.requestAnimationFrame(() => {
       document.querySelector(location.hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
-  }, [location.hash])
+  }, [location.pathname, location.hash])
 
   const isNavActive = (itemPath, routerActive) => {
     const [pathname, hash = ''] = itemPath.split('#')
@@ -173,8 +175,8 @@ export function RecommendationBadge({ value }) {
   )
 }
 
-export function Card({ children, className = '' }) {
-  return <div className={`panel-card glass ${className}`}>{children}</div>
+export function Card({ children, className = '', ...props }) {
+  return <div className={`panel-card glass ${className}`} {...props}>{children}</div>
 }
 
 export function StatCard({ icon: Icon = Gauge, label, value, change, tone = '#8b5cf6' }) {
