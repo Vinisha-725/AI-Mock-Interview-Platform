@@ -21,8 +21,13 @@ export const getSession = async (interviewId) => {
 }
 
 export const getHistory = async () => {
-  const response = await api.get('/interview/history')
-  return response.data
+  try {
+    const response = await api.get('/interview/history', { timeout: 5000 })
+    return Array.isArray(response.data) ? response.data : []
+  } catch (error) {
+    console.warn('Interview history unavailable, using empty dashboard state:', error.message)
+    return []
+  }
 }
 
 export const endInterview = async (interviewId) => {
