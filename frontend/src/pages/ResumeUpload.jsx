@@ -8,23 +8,30 @@ export default function ResumeUpload() {
   const [file, setFile] = useState(null)
   const [loading, setLoading] = useState(false)
   const [extractedData, setExtractedData] = useState(null)
+  const [error, setError] = useState('')
   const [expandedSection, setExpandedSection] = useState(null)
   const navigate = useNavigate()
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0])
     setExtractedData(null)
+    setError('')
   }
 
   const handleUpload = async () => {
     if (!file) return
 
     setLoading(true)
-    const response = await uploadResume(file)
-    
-    // Use actual extracted data from backend
-    setExtractedData(response)
-    setLoading(false)
+    setError('')
+
+    try {
+      const response = await uploadResume(file)
+      setExtractedData(response)
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Could not extract details from this resume. Please try a PDF or DOCX file.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const toggleSection = (section) => {
@@ -57,7 +64,7 @@ export default function ResumeUpload() {
               <input 
                 type="file" 
                 onChange={handleFileChange}
-                accept=".pdf,.doc,.docx"
+                accept=".pdf,.docx"
                 style={{ marginBottom: '15px' }}
                 id="file-upload"
               />
@@ -67,10 +74,15 @@ export default function ResumeUpload() {
                   {file ? file.name : 'Drag and drop your resume here or click to browse'}
                 </p>
                 <p style={{ margin: '0', color: '#888', fontSize: '14px' }}>
-                  Supported formats: PDF, DOC, DOCX
+                  Supported formats: PDF, DOCX
                 </p>
               </label>
             </div>
+            {error && (
+              <p style={{ margin: '15px 0 0 0', color: '#d32f2f', fontWeight: 'bold' }}>
+                {error}
+              </p>
+            )}
             <button 
               onClick={handleUpload}
               disabled={!file || loading}

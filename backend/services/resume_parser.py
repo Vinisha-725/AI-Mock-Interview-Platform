@@ -1,16 +1,89 @@
 from typing import List
-import pypdf
-import docx
+from io import BytesIO
 from models import Project, Experience, Education, ResumeUploadResponse
 import re
 
+try:
+    import docx
+except ImportError:
+    docx = None
+
+try:
+    from PyPDF2 import PdfReader
+except ImportError:
+    try:
+        from pypdf import PdfReader
+    except ImportError:
+        PdfReader = None
+
 class ResumeParser:
+    def normalize_text(self, text: str) -> str:
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
+        text = re.sub(r"[ \t]+", " ", text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        return text.strip()
+
+    def contains_keyword(self, text: str, keyword: str) -> bool:
+        pattern = rf'(?<![A-Za-z0-9+#.]){re.escape(keyword)}(?![A-Za-z0-9+#.])'
+        return re.search(pattern, text, re.IGNORECASE) is not None
+
+    def dedupe(self, values: List[str]) -> List[str]:
+        seen = set()
+        result = []
+        for value in values:
+            key = value.lower()
+            if key not in seen:
+                seen.add(key)
+                result.append(value)
+        return result
+
+    def get_section(self, text: str, headings: List[str]) -> str:
+        heading_pattern = "|".join(re.escape(heading) for heading in headings)
+        stop_headings = [
+            "summary", "objective", "experience", "work experience", "professional experience",
+            "employment", "projects", "education", "certifications", "achievements",
+            "awards", "languages", "interests", "contact", "profile"
+        ]
+        stop_pattern = "|".join(re.escape(heading) for heading in stop_headings if heading not in headings)
+        pattern = rf"(?:^|\n)\s*(?:{heading_pattern})\s*:?\s*\n?(.*?)(?=\n\s*(?:{stop_pattern})\s*:?\s*\n|$)"
+        match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+        return match.group(1).strip() if match else ""
+
+    def extract_skills_from_section(self, text: str) -> List[str]:
+        section = self.get_section(text, ["skills", "technical skills", "technologies", "tech stack"])
+        if not section:
+            return []
+
+        tokens = re.split(r"[,;|•●▪\-–—\n/]+", section)
+        ignored = {
+            "skills", "technical skills", "technologies", "tech stack", "tools",
+            "languages", "frameworks", "databases", "cloud", "backend", "frontend"
+        }
+        skills = []
+        for token in tokens:
+            skill = re.sub(r"\s+", " ", token).strip(" .:()[]{}")
+            if ":" in skill:
+                skill = skill.split(":")[-1].strip()
+            if not skill or skill.lower() in ignored:
+                continue
+            if len(skill) < 2 or len(skill) > 35:
+                continue
+            if not re.search(r"[A-Za-z+#.]", skill):
+                continue
+            skills.append(skill)
+
+        return self.dedupe(skills)[:25]
+
     def extract_text_from_pdf(self, file_content: bytes) -> str:
         try:
-            pdf_reader = pypdf.PdfReader(file_content)
+            if PdfReader is None:
+                print("Error parsing PDF: install PyPDF2 or pypdf")
+                return ""
+
+            pdf_reader = PdfReader(BytesIO(file_content))
             text = ""
             for page in pdf_reader.pages:
-                text += page.extract_text()
+                text += page.extract_text() or ""
             print(f"Extracted {len(text)} characters from PDF")
             return text
         except Exception as e:
@@ -19,10 +92,19 @@ class ResumeParser:
 
     def extract_text_from_docx(self, file_content: bytes) -> str:
         try:
-            doc = docx.Document(file_content)
+            if docx is None:
+                print("Error parsing DOCX: install python-docx")
+                return ""
+
+            doc = docx.Document(BytesIO(file_content))
             text = ""
             for paragraph in doc.paragraphs:
                 text += paragraph.text + "\n"
+            for table in doc.tables:
+                for row in table.rows:
+                    row_text = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+                    if row_text:
+                        text += " | ".join(row_text) + "\n"
             print(f"Extracted {len(text)} characters from DOCX")
             return text
         except Exception as e:
@@ -35,33 +117,33 @@ class ResumeParser:
             # Programming Languages
             "JavaScript", "Python", "Java", "C++", "C#", "C", "Go", "Rust", "Swift", "Kotlin", "PHP", "Ruby", "Scala", "TypeScript", "R", "MATLAB", "Perl", "Lua", "Haskell",
             # Frontend
-            "React", "Angular", "Vue", "Next.js", "Nuxt.js", "Svelte", "Ember", "Backbone", "jQuery", "HTML", "CSS", "SASS", "SCSS", "LESS", "Tailwind", "Bootstrap",
+            "React", "React.js", "Angular", "Vue", "Vue.js", "Next.js", "Nuxt.js", "Svelte", "Ember", "Backbone", "jQuery", "HTML", "HTML5", "CSS", "CSS3", "SASS", "SCSS", "LESS", "Tailwind", "Tailwind CSS", "Bootstrap", "Vite", "Redux",
             # Backend
-            "Node.js", "Express", "Django", "Flask", "FastAPI", "Spring", "Spring Boot", "Ruby on Rails", "Laravel", "ASP.NET", "NestJS", "Hapi",
+            "Node.js", "Node", "Express", "Express.js", "Django", "Flask", "FastAPI", "Spring", "Spring Boot", "Ruby on Rails", "Laravel", "ASP.NET", "NestJS", "Hapi",
             # Databases
-            "SQL", "MySQL", "PostgreSQL", "MongoDB", "Redis", "Elasticsearch", "Cassandra", "DynamoDB", "Firebase", "SQLite", "Oracle", "MariaDB",
+            "SQL", "MySQL", "PostgreSQL", "MongoDB", "Mongoose", "Redis", "Elasticsearch", "Cassandra", "DynamoDB", "Firebase", "SQLite", "Oracle", "MariaDB", "Supabase",
             # Cloud & DevOps
-            "AWS", "Azure", "GCP", "Google Cloud", "Docker", "Kubernetes", "Terraform", "Ansible", "Jenkins", "GitLab CI", "CircleCI", "Travis CI",
+            "AWS", "Azure", "GCP", "Google Cloud", "Docker", "Kubernetes", "Terraform", "Ansible", "Jenkins", "GitLab CI", "CircleCI", "Travis CI", "Vercel", "Netlify",
             # Tools
-            "Git", "GitHub", "GitLab", "Bitbucket", "Jira", "Confluence", "Slack", "VS Code", "IntelliJ", "Eclipse", "Visual Studio",
+            "Git", "GitHub", "GitLab", "Bitbucket", "Jira", "Confluence", "Slack", "VS Code", "IntelliJ", "Eclipse", "Visual Studio", "Postman", "Figma",
             # APIs & Architecture
             "REST", "RESTful", "GraphQL", "SOAP", "API", "Microservices", "Monolith", "Serverless", "gRPC",
             # Data Science & ML
-            "TensorFlow", "PyTorch", "Keras", "Scikit-learn", "Pandas", "NumPy", "Matplotlib", "Seaborn", "Jupyter", "Spark", "Hadoop",
+            "TensorFlow", "PyTorch", "Keras", "Scikit-learn", "Pandas", "NumPy", "Matplotlib", "Seaborn", "Jupyter", "Spark", "Hadoop", "OpenAI", "LLM", "LangChain",
             # Mobile
             "React Native", "Flutter", "Ionic", "Xamarin", "Android", "iOS", "SwiftUI", "Jetpack Compose",
             # Other
             "Linux", "Unix", "Bash", "Shell", "PowerShell", "CI/CD", "Agile", "Scrum", "Kanban", "DevOps", "TDD", "BDD",
-            "Machine Learning", "Deep Learning", "AI", "Artificial Intelligence", "Data Science", "Big Data", "Blockchain"
+            "Machine Learning", "Deep Learning", "AI", "Artificial Intelligence", "Data Science", "Big Data", "Blockchain", "MERN", "MERN Stack", "JWT"
         ]
         
-        found_skills = []
-        text_lower = text.lower()
+        found_skills = self.extract_skills_from_section(text)
         
         for skill in skill_keywords:
-            if skill.lower() in text_lower:
+            if self.contains_keyword(text, skill):
                 found_skills.append(skill)
         
+        found_skills = self.dedupe(found_skills)
         print(f"Found {len(found_skills)} skills: {found_skills}")
         return found_skills
 
@@ -82,7 +164,7 @@ class ResumeParser:
                 if len(project_text) > 30:  # Filter out very short matches
                     # Try to extract tech stack from the project description
                     tech_keywords = ["React", "Node", "Python", "JavaScript", "AWS", "Docker", "SQL", "MongoDB", "Git", "TypeScript", "Java", "Angular", "Vue", "Flask", "Django", "FastAPI"]
-                    found_tech = [tech for tech in tech_keywords if tech.lower() in project_text.lower()]
+                    found_tech = [tech for tech in tech_keywords if self.contains_keyword(project_text, tech)]
                     
                     # Try to extract a project name (first line or before colon)
                     lines = project_text.split('\n')
@@ -226,10 +308,9 @@ class ResumeParser:
         ]
         
         found_tech = []
-        text_lower = text.lower()
         
         for tech in tech_keywords:
-            if tech.lower() in text_lower:
+            if self.contains_keyword(text, tech):
                 found_tech.append(tech)
         
         print(f"Found {len(found_tech)} tech stack items")
@@ -271,11 +352,12 @@ class ResumeParser:
 
     def parse_resume(self, file_content: bytes, filename: str) -> ResumeUploadResponse:
         print(f"=== Starting resume parsing for: {filename} ===")
+        filename_lower = filename.lower()
         
         # Determine file type and extract text
-        if filename.endswith('.pdf'):
+        if filename_lower.endswith('.pdf'):
             text = self.extract_text_from_pdf(file_content)
-        elif filename.endswith('.docx'):
+        elif filename_lower.endswith('.docx'):
             text = self.extract_text_from_docx(file_content)
         else:
             # For other formats, try as text
@@ -286,8 +368,12 @@ class ResumeParser:
                 text = ""
                 print("Could not decode file as text")
         
+        text = self.normalize_text(text)
         print(f"Total text length: {len(text)} characters")
         print(f"Text preview (first 500 chars): {text[:500]}")
+
+        if len(text) < 30:
+            raise ValueError("No readable text found in this resume. If this is a scanned PDF/image, upload a text-based PDF or DOCX.")
         
         # Extract all information
         skills = self.extract_skills(text)
@@ -301,7 +387,7 @@ class ResumeParser:
         print(f"Skills: {len(skills)}, Projects: {len(projects)}, Experience: {len(experience)}, Education: {len(education)}, Tech Stack: {len(tech_stack)}, Certifications: {len(certifications)}")
         
         return ResumeUploadResponse(
-            skills=skills if skills else ["No skills detected"],
+            skills=skills if skills else [],
             projects=projects if projects else [],
             experience=experience if experience else [],
             education=education if education else [],
