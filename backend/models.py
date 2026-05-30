@@ -1,8 +1,28 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
+class Project(BaseModel):
+    name: str
+    description: str
+    tech: List[str]
+
+class Experience(BaseModel):
+    company: str
+    role: str
+    duration: str
+
+class Education(BaseModel):
+    degree: str
+    institution: str
+    year: str
+
 class ResumeUploadResponse(BaseModel):
     skills: List[str]
+    projects: List[Project]
+    experience: List[Experience]
+    education: List[Education]
+    techStack: List[str]
+    certifications: List[str]
 
 class InterviewStartRequest(BaseModel):
     skills: List[str]

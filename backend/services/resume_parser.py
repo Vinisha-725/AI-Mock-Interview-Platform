@@ -1,23 +1,280 @@
 from typing import List
+import pypdf
+import docx
+from models import Project, Experience, Education, ResumeUploadResponse
+import re
 
 class ResumeParser:
-    def extract_skills(self, filename: str) -> List[str]:
-        # Mock skill extraction based on filename
-        # In a real implementation, this would parse the actual resume
-        mock_skills = [
-            "JavaScript",
-            "React",
-            "Python",
-            "FastAPI",
-            "SQL",
-            "Git",
-            "Docker",
-            "AWS",
-            "TypeScript",
-            "Node.js"
+    def extract_text_from_pdf(self, file_content: bytes) -> str:
+        try:
+            pdf_reader = pypdf.PdfReader(file_content)
+            text = ""
+            for page in pdf_reader.pages:
+                text += page.extract_text()
+            print(f"Extracted {len(text)} characters from PDF")
+            return text
+        except Exception as e:
+            print(f"Error parsing PDF: {e}")
+            return ""
+
+    def extract_text_from_docx(self, file_content: bytes) -> str:
+        try:
+            doc = docx.Document(file_content)
+            text = ""
+            for paragraph in doc.paragraphs:
+                text += paragraph.text + "\n"
+            print(f"Extracted {len(text)} characters from DOCX")
+            return text
+        except Exception as e:
+            print(f"Error parsing DOCX: {e}")
+            return ""
+
+    def extract_skills(self, text: str) -> List[str]:
+        # Comprehensive list of technical skills
+        skill_keywords = [
+            # Programming Languages
+            "JavaScript", "Python", "Java", "C++", "C#", "C", "Go", "Rust", "Swift", "Kotlin", "PHP", "Ruby", "Scala", "TypeScript", "R", "MATLAB", "Perl", "Lua", "Haskell",
+            # Frontend
+            "React", "Angular", "Vue", "Next.js", "Nuxt.js", "Svelte", "Ember", "Backbone", "jQuery", "HTML", "CSS", "SASS", "SCSS", "LESS", "Tailwind", "Bootstrap",
+            # Backend
+            "Node.js", "Express", "Django", "Flask", "FastAPI", "Spring", "Spring Boot", "Ruby on Rails", "Laravel", "ASP.NET", "NestJS", "Hapi",
+            # Databases
+            "SQL", "MySQL", "PostgreSQL", "MongoDB", "Redis", "Elasticsearch", "Cassandra", "DynamoDB", "Firebase", "SQLite", "Oracle", "MariaDB",
+            # Cloud & DevOps
+            "AWS", "Azure", "GCP", "Google Cloud", "Docker", "Kubernetes", "Terraform", "Ansible", "Jenkins", "GitLab CI", "CircleCI", "Travis CI",
+            # Tools
+            "Git", "GitHub", "GitLab", "Bitbucket", "Jira", "Confluence", "Slack", "VS Code", "IntelliJ", "Eclipse", "Visual Studio",
+            # APIs & Architecture
+            "REST", "RESTful", "GraphQL", "SOAP", "API", "Microservices", "Monolith", "Serverless", "gRPC",
+            # Data Science & ML
+            "TensorFlow", "PyTorch", "Keras", "Scikit-learn", "Pandas", "NumPy", "Matplotlib", "Seaborn", "Jupyter", "Spark", "Hadoop",
+            # Mobile
+            "React Native", "Flutter", "Ionic", "Xamarin", "Android", "iOS", "SwiftUI", "Jetpack Compose",
+            # Other
+            "Linux", "Unix", "Bash", "Shell", "PowerShell", "CI/CD", "Agile", "Scrum", "Kanban", "DevOps", "TDD", "BDD",
+            "Machine Learning", "Deep Learning", "AI", "Artificial Intelligence", "Data Science", "Big Data", "Blockchain"
         ]
         
-        # Return a subset of skills
-        return mock_skills[:5]
+        found_skills = []
+        text_lower = text.lower()
+        
+        for skill in skill_keywords:
+            if skill.lower() in text_lower:
+                found_skills.append(skill)
+        
+        print(f"Found {len(found_skills)} skills: {found_skills}")
+        return found_skills
+
+    def extract_projects(self, text: str) -> List[Project]:
+        projects = []
+        
+        # More flexible project section patterns
+        project_patterns = [
+            r'project[s]?\s*:?\s*(.*?)(?=\n\s*\n|\n[A-Z][A-Z]+\s|\n\d+\.|\nexperience|\neducation|\nskills|$)',
+            r'personal project[s]?\s*:?\s*(.*?)(?=\n\s*\n|\n[A-Z][A-Z]+\s|\n\d+\.|\nexperience|\neducation|\nskills|$)',
+            r'key project[s]?\s*:?\s*(.*?)(?=\n\s*\n|\n[A-Z][A-Z]+\s|\n\d+\.|\nexperience|\neducation|\nskills|$)',
+        ]
+        
+        for pattern in project_patterns:
+            matches = re.findall(pattern, text, re.IGNORECASE | re.DOTALL)
+            for match in matches:
+                project_text = match.strip()
+                if len(project_text) > 30:  # Filter out very short matches
+                    # Try to extract tech stack from the project description
+                    tech_keywords = ["React", "Node", "Python", "JavaScript", "AWS", "Docker", "SQL", "MongoDB", "Git", "TypeScript", "Java", "Angular", "Vue", "Flask", "Django", "FastAPI"]
+                    found_tech = [tech for tech in tech_keywords if tech.lower() in project_text.lower()]
+                    
+                    # Try to extract a project name (first line or before colon)
+                    lines = project_text.split('\n')
+                    project_name = lines[0].strip() if lines else "Project"
+                    if ':' in project_name:
+                        project_name = project_name.split(':')[0].strip()
+                    
+                    projects.append(Project(
+                        name=project_name[:50],
+                        description=project_text[:300] + "..." if len(project_text) > 300 else project_text,
+                        tech=found_tech if found_tech else ["Various Technologies"]
+                    ))
+        
+        print(f"Found {len(projects)} projects")
+        return projects[:5]  # Return max 5 projects
+
+    def extract_experience(self, text: str) -> List[Experience]:
+        experiences = []
+        
+        # More flexible experience/work section patterns
+        exp_patterns = [
+            r'experience\s*:?\s*(.*?)(?=\n\s*\n|\n[A-Z][A-Z]+\s|\neducation|\nprojects|\nskills|$)',
+            r'work experience\s*:?\s*(.*?)(?=\n\s*\n|\n[A-Z][A-Z]+\s|\neducation|\nprojects|\nskills|$)',
+            r'employment\s*:?\s*(.*?)(?=\n\s*\n|\n[A-Z][A-Z]+\s|\neducation|\nprojects|\nskills|$)',
+            r'work history\s*:?\s*(.*?)(?=\n\s*\n|\n[A-Z][A-Z]+\s|\neducation|\nprojects|\nskills|$)',
+            r'professional experience\s*:?\s*(.*?)(?=\n\s*\n|\n[A-Z][A-Z]+\s|\neducation|\nprojects|\nskills|$)',
+        ]
+        
+        for pattern in exp_patterns:
+            matches = re.findall(pattern, text, re.IGNORECASE | re.DOTALL)
+            for match in matches:
+                exp_text = match.strip()
+                if len(exp_text) > 50:
+                    # Try to extract company, role, and duration from lines
+                    lines = [line.strip() for line in exp_text.split('\n') if line.strip()]
+                    
+                    for i, line in enumerate(lines):
+                        # Look for patterns like "Company Name - Role" or "Role at Company"
+                        if len(line) > 15 and i < len(lines) - 1:
+                            company = "Company"
+                            role = line
+                            duration = "Duration"
+                            
+                            # Try to extract company name
+                            if ' at ' in line.lower():
+                                parts = line.split(' at ')
+                                role = parts[0].strip()
+                                company = parts[1].strip()
+                            elif ' - ' in line:
+                                parts = line.split(' - ')
+                                company = parts[0].strip()
+                                role = parts[1].strip()
+                            elif '|' in line:
+                                parts = line.split('|')
+                                role = parts[0].strip()
+                                company = parts[1].strip() if len(parts) > 1 else "Company"
+                            
+                            # Try to extract duration from next line
+                            if i + 1 < len(lines):
+                                next_line = lines[i + 1]
+                                if any(char.isdigit() for char in next_line):
+                                    duration = next_line
+                            
+                            experiences.append(Experience(
+                                company=company[:50],
+                                role=role[:50],
+                                duration=duration[:30]
+                            ))
+                            
+                            if len(experiences) >= 5:
+                                break
+                    if len(experiences) >= 5:
+                        break
+        
+        print(f"Found {len(experiences)} experiences")
+        return experiences[:5]  # Return max 5 experiences
+
+    def extract_education(self, text: str) -> List[Education]:
+        education_list = []
+        
+        # More flexible education section patterns
+        edu_patterns = [
+            r'education\s*:?\s*(.*?)(?=\n\s*\n|\n[A-Z][A-Z]+\s|\nexperience|\nprojects|\nskills|$)',
+            r'academic\s*:?\s*(.*?)(?=\n\s*\n|\n[A-Z][A-Z]+\s|\nexperience|\nprojects|\nskills|$)',
+            r'qualification\s*:?\s*(.*?)(?=\n\s*\n|\n[A-Z][A-Z]+\s|\nexperience|\nprojects|\nskills|$)',
+        ]
+        
+        for pattern in edu_patterns:
+            matches = re.findall(pattern, text, re.IGNORECASE | re.DOTALL)
+            for match in matches:
+                edu_text = match.strip()
+                if len(edu_text) > 30:
+                    # Try to extract degree, institution, and year
+                    lines = [line.strip() for line in edu_text.split('\n') if line.strip()]
+                    
+                    for line in lines:
+                        if len(line) > 20:
+                            degree = line
+                            institution = "Institution"
+                            year = "Year"
+                            
+                            # Try to extract degree and institution
+                            if ' in ' in line.lower() or ' at ' in line.lower():
+                                parts = re.split(r'\s+(?:in|at)\s+', line, flags=re.IGNORECASE)
+                                if len(parts) >= 2:
+                                    degree = parts[0].strip()
+                                    institution = parts[1].strip()
+                            
+                            # Try to extract year
+                            year_match = re.search(r'\b(19|20)\d{2}\b', line)
+                            if year_match:
+                                year = year_match.group()
+                            
+                            education_list.append(Education(
+                                degree=degree[:60],
+                                institution=institution[:60],
+                                year=year
+                            ))
+                            
+                            if len(education_list) >= 3:
+                                break
+                    if len(education_list) >= 3:
+                        break
+        
+        print(f"Found {len(education_list)} education entries")
+        return education_list[:3]  # Return max 3 education entries
+
+    def extract_tech_stack(self, text: str) -> List[str]:
+        # This is similar to skills but focuses on technologies
+        tech_keywords = [
+            "JavaScript", "Python", "Java", "React", "Angular", "Vue", "Node.js",
+            "SQL", "MongoDB", "PostgreSQL", "AWS", "Docker", "Kubernetes", "Git",
+            "TypeScript", "Go", "Rust", "GraphQL", "REST", "API", "Microservices",
+            "Linux", "Django", "Flask", "FastAPI", "Express", "Spring"
+        ]
+        
+        found_tech = []
+        text_lower = text.lower()
+        
+        for tech in tech_keywords:
+            if tech.lower() in text_lower:
+                found_tech.append(tech)
+        
+        return found_tech
+
+    def extract_certifications(self, text: str) -> List[str]:
+        cert_keywords = [
+            "AWS", "Azure", "GCP", "Google Cloud", "Microsoft", "Oracle",
+            "Certified", "Certificate", "Certification", "PMP", "Scrum",
+            "Agile", "CCNA", "CCNP", "CEH", "CISSP"
+        ]
+        
+        found_certs = []
+        lines = text.split('\n')
+        
+        for line in lines:
+            line_lower = line.lower()
+            for cert in cert_keywords:
+                if cert.lower() in line_lower and len(line) > 10:
+                    found_certs.append(line.strip())
+                    break
+        
+        return found_certs[:5]  # Return max 5 certifications
+
+    def parse_resume(self, file_content: bytes, filename: str) -> ResumeUploadResponse:
+        # Determine file type and extract text
+        if filename.endswith('.pdf'):
+            text = self.extract_text_from_pdf(file_content)
+        elif filename.endswith('.docx'):
+            text = self.extract_text_from_docx(file_content)
+        else:
+            # For other formats, try as text
+            try:
+                text = file_content.decode('utf-8')
+            except:
+                text = ""
+        
+        # Extract all information
+        skills = self.extract_skills(text)
+        projects = self.extract_projects(text)
+        experience = self.extract_experience(text)
+        education = self.extract_education(text)
+        tech_stack = self.extract_tech_stack(text)
+        certifications = self.extract_certifications(text)
+        
+        return ResumeUploadResponse(
+            skills=skills if skills else ["No skills detected"],
+            projects=projects if projects else [],
+            experience=experience if experience else [],
+            education=education if education else [],
+            techStack=tech_stack if tech_stack else [],
+            certifications=certifications if certifications else []
+        )
 
 resume_parser = ResumeParser()
