@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { AlertCircle, BriefcaseBusiness, FileUp, Lightbulb, Sparkles, Wand2 } from 'lucide-react'
+import { AlertCircle, BriefcaseBusiness, FileUp, Lightbulb, Sparkles, Wand2, FileText } from 'lucide-react'
 import { AppShell, Card, PillList, ScoreRing, SectionHead, SkeletonRows } from '../components/PremiumUI'
 import { uploadResume } from '../services/resume'
 import { detectedSkills, missingSkills } from '../data/mockData'
@@ -8,6 +8,8 @@ import { detectedSkills, missingSkills } from '../data/mockData'
 export default function ResumeUpload() {
   const [file, setFile] = useState(null)
   const [jdFile, setJdFile] = useState(null)
+  const [jdText, setJdText] = useState('')
+  const [jdInputMode, setJdInputMode] = useState('file') // 'file' or 'text'
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [data, setData] = useState(null)
@@ -48,14 +50,47 @@ export default function ResumeUpload() {
             </div>
           </label>
           <div style={{ height: 14 }} />
-          <label className="upload-zone" style={{ minHeight: 170 }}>
-            <input type="file" accept=".pdf,.docx,.txt" onChange={(event) => setJdFile(event.target.files?.[0] || null)} />
-            <div>
-              <BriefcaseBusiness size={34} color="#38bdf8" />
-              <h3>{jdFile ? jdFile.name : 'Upload JD'}</h3>
-              <p>Optional role description for match scoring</p>
+          <div className="jd-input-section">
+            <div className="jd-toggle">
+              <button 
+                className={`toggle-btn ${jdInputMode === 'file' ? 'active' : ''}`}
+                onClick={() => setJdInputMode('file')}
+              >
+                <FileUp size={16} />
+                Upload File
+              </button>
+              <button 
+                className={`toggle-btn ${jdInputMode === 'text' ? 'active' : ''}`}
+                onClick={() => setJdInputMode('text')}
+              >
+                <FileText size={16} />
+                Enter Text
+              </button>
             </div>
-          </label>
+            
+            {jdInputMode === 'file' ? (
+              <label className="upload-zone" style={{ minHeight: 170 }}>
+                <input type="file" accept=".pdf,.docx,.txt" onChange={(event) => setJdFile(event.target.files?.[0] || null)} />
+                <div>
+                  <BriefcaseBusiness size={34} color="#38bdf8" />
+                  <h3>{jdFile ? jdFile.name : 'Upload JD'}</h3>
+                  <p>Optional role description for match scoring</p>
+                </div>
+              </label>
+            ) : (
+              <div className="text-input-zone">
+                <textarea
+                  placeholder="Paste job description text here..."
+                  value={jdText}
+                  onChange={(e) => setJdText(e.target.value)}
+                  className="jd-textarea"
+                />
+                <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>
+                  {jdText.length} characters
+                </p>
+              </div>
+            )}
+          </div>
           {error && (
             <div className="activity-item" style={{ marginTop: 14, color: '#fecdd3' }}>
               <AlertCircle size={18} />
