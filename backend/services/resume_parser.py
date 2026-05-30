@@ -211,12 +211,18 @@ class ResumeParser:
         return education_list[:3]  # Return max 3 education entries
 
     def extract_tech_stack(self, text: str) -> List[str]:
-        # This is similar to skills but focuses on technologies
+        # Comprehensive tech stack keywords
         tech_keywords = [
-            "JavaScript", "Python", "Java", "React", "Angular", "Vue", "Node.js",
-            "SQL", "MongoDB", "PostgreSQL", "AWS", "Docker", "Kubernetes", "Git",
-            "TypeScript", "Go", "Rust", "GraphQL", "REST", "API", "Microservices",
-            "Linux", "Django", "Flask", "FastAPI", "Express", "Spring"
+            "JavaScript", "Python", "Java", "C++", "C#", "Go", "Rust", "TypeScript", "PHP", "Ruby", "Swift", "Kotlin",
+            "React", "Angular", "Vue", "Next.js", "Nuxt.js", "Svelte", "Ember", "Backbone",
+            "Node.js", "Express", "Django", "Flask", "FastAPI", "Spring", "Spring Boot", "Ruby on Rails", "Laravel", "ASP.NET",
+            "SQL", "MySQL", "PostgreSQL", "MongoDB", "Redis", "Elasticsearch", "Cassandra", "DynamoDB", "Firebase", "SQLite",
+            "AWS", "Azure", "GCP", "Google Cloud", "Docker", "Kubernetes", "Terraform", "Ansible",
+            "Git", "GitHub", "GitLab", "Bitbucket", "Jenkins", "CI/CD",
+            "GraphQL", "REST", "RESTful", "API", "Microservices", "gRPC", "SOAP",
+            "Linux", "Unix", "Bash", "Shell", "PowerShell",
+            "HTML", "CSS", "SASS", "SCSS", "LESS", "Tailwind", "Bootstrap",
+            "TensorFlow", "PyTorch", "Keras", "Scikit-learn", "Pandas", "NumPy", "Spark", "Hadoop"
         ]
         
         found_tech = []
@@ -226,28 +232,46 @@ class ResumeParser:
             if tech.lower() in text_lower:
                 found_tech.append(tech)
         
+        print(f"Found {len(found_tech)} tech stack items")
         return found_tech
 
     def extract_certifications(self, text: str) -> List[str]:
-        cert_keywords = [
-            "AWS", "Azure", "GCP", "Google Cloud", "Microsoft", "Oracle",
-            "Certified", "Certificate", "Certification", "PMP", "Scrum",
-            "Agile", "CCNA", "CCNP", "CEH", "CISSP"
+        # More comprehensive certification patterns
+        cert_patterns = [
+            r'(?:AWS|Azure|GCP|Google Cloud|Microsoft|Oracle|Cisco|Google|Meta|IBM)\s+(?:Certified?|Certificate?|Certification?|Professional|Associate|Architect|Developer|Engineer|Specialist)',
+            r'(?:Certified?|Certificate?|Certification?)\s+(?:AWS|Azure|GCP|Google Cloud|Microsoft|Oracle|PMP|Scrum|Agile|CCNA|CCNP|CEH|CISSP|CISA|CISM)',
+            r'(?:PMP|Scrum|Agile|CCNA|CCNP|CEH|CISSP|CISA|CISM|ITIL|Prince2)\s+(?:Certified?|Practitioner|Professional)',
+            r'(?:Certificate?|Certification?)\s+(?:in|of|for)\s+[^.\n]+',
         ]
         
         found_certs = []
+        
+        for pattern in cert_patterns:
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            for match in matches:
+                cert = match.strip()
+                if len(cert) > 10 and cert not in found_certs:
+                    found_certs.append(cert)
+        
+        # Also look for lines with certification keywords
+        cert_keywords = ["AWS", "Azure", "GCP", "Google Cloud", "Microsoft", "Oracle", "Cisco", "PMP", "Scrum", "Agile", "CCNA", "CCNP", "CEH", "CISSP", "CISA", "CISM", "ITIL"]
         lines = text.split('\n')
         
         for line in lines:
             line_lower = line.lower()
             for cert in cert_keywords:
-                if cert.lower() in line_lower and len(line) > 10:
-                    found_certs.append(line.strip())
+                if cert.lower() in line_lower and len(line.strip()) > 10:
+                    cert_line = line.strip()
+                    if cert_line not in found_certs:
+                        found_certs.append(cert_line)
                     break
         
-        return found_certs[:5]  # Return max 5 certifications
+        print(f"Found {len(found_certs)} certifications")
+        return found_certs[:8]  # Return max 8 certifications
 
     def parse_resume(self, file_content: bytes, filename: str) -> ResumeUploadResponse:
+        print(f"=== Starting resume parsing for: {filename} ===")
+        
         # Determine file type and extract text
         if filename.endswith('.pdf'):
             text = self.extract_text_from_pdf(file_content)
@@ -257,8 +281,13 @@ class ResumeParser:
             # For other formats, try as text
             try:
                 text = file_content.decode('utf-8')
+                print(f"Extracted {len(text)} characters from text file")
             except:
                 text = ""
+                print("Could not decode file as text")
+        
+        print(f"Total text length: {len(text)} characters")
+        print(f"Text preview (first 500 chars): {text[:500]}")
         
         # Extract all information
         skills = self.extract_skills(text)
@@ -267,6 +296,9 @@ class ResumeParser:
         education = self.extract_education(text)
         tech_stack = self.extract_tech_stack(text)
         certifications = self.extract_certifications(text)
+        
+        print(f"=== Parsing Complete ===")
+        print(f"Skills: {len(skills)}, Projects: {len(projects)}, Experience: {len(experience)}, Education: {len(education)}, Tech Stack: {len(tech_stack)}, Certifications: {len(certifications)}")
         
         return ResumeUploadResponse(
             skills=skills if skills else ["No skills detected"],
