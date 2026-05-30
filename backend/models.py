@@ -1,5 +1,6 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict
+from datetime import datetime
 
 class Project(BaseModel):
     name: str
@@ -24,26 +25,64 @@ class ResumeUploadResponse(BaseModel):
     techStack: List[str]
     certifications: List[str]
 
-class InterviewStartRequest(BaseModel):
-    skills: List[str]
-
 class Question(BaseModel):
-    id: int
+    id: str
     question: str
     difficulty: str
+    category: str
+    follow_up_to: Optional[str] = None
+
+class InterviewStartRequest(BaseModel):
+    skills: List[str]
+    projects: List[Project]
+    jd_text: Optional[str] = None
+    interview_type: str = "ai"  # "ai", "dsa", "aptitude"
 
 class InterviewStartResponse(BaseModel):
+    interview_id: str
     question: Question
+    duration_minutes: int
+    start_time: str
 
 class AnswerSubmission(BaseModel):
-    question_id: int
+    interview_id: str
+    question_id: str
     answer: str
-    previous_score: int
+    answer_type: str = "text"  # "text" or "voice"
+    transcription: Optional[str] = None
 
 class AnswerResponse(BaseModel):
     score: int
-    total_score: int
+    feedback: str
+    is_correct: bool
     next_question: Optional[Question] = None
+    interview_ended: bool = False
+    end_reason: Optional[str] = None
+
+class InterviewSession(BaseModel):
+    interview_id: str
+    interview_type: str
+    skills: List[str]
+    projects: List[Project]
+    jd_text: Optional[str]
+    start_time: datetime
+    end_time: Optional[datetime] = None
+    duration_minutes: int
+    questions_asked: List[str]
+    answers_given: Dict[str, str]
+    scores: List[int]
+    consecutive_wrong_answers: int
+    total_score: int
+    status: str  # "active", "completed", "terminated"
+
+class SessionHistory(BaseModel):
+    session_id: str
+    interview_type: str
+    date: datetime
+    duration_minutes: int
+    total_score: int
+    questions_count: int
+    status: str
 
 class Report(BaseModel):
     readiness_score: int

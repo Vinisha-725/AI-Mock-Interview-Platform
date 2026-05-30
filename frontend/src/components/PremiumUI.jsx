@@ -27,7 +27,7 @@ const sidebarItems = [
   { label: 'Dashboard', path: '/candidate-dashboard', icon: LayoutDashboard },
   { label: 'Resume Analysis', path: '/resume-upload', icon: FileSearch },
   { label: 'Job Description', path: '/resume-upload', icon: BriefcaseBusiness },
-  { label: 'Mock Interview', path: '/interview-room', icon: Mic },
+  { label: 'Mock Interview', path: '/interview-fullscreen', icon: Mic },
   { label: 'Reports', path: '/report/latest', icon: ChartNoAxesCombined },
   { label: 'Career Coach', path: '/career-coach', icon: BrainCircuit },
   { label: 'Settings', path: '/settings', icon: Settings },

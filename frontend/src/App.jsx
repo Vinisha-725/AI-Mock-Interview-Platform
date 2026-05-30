@@ -4,6 +4,7 @@ import Login from './pages/Login'
 import CandidateDashboard from './pages/CandidateDashboard'
 import RecruiterDashboard from './pages/RecruiterDashboard'
 import InterviewRoom from './pages/InterviewRoom'
+import InterviewRoomFullScreen from './pages/InterviewRoomFullScreen'
 import ResumeUpload from './pages/ResumeUpload'
 import Report from './pages/Report'
 import Settings from './pages/Settings'
@@ -24,6 +25,7 @@ function App() {
         <Route path="/recruiter-dashboard" element={<RecruiterDashboard />} />
         <Route path="/admin" element={<RecruiterDashboard />} />
         <Route path="/interview-room" element={<InterviewRoom />} />
+        <Route path="/interview-fullscreen" element={<InterviewRoomFullScreen />} />
         <Route path="/resume-upload" element={<ResumeUpload />} />
         <Route path="/resume-analysis" element={<ResumeUpload />} />
         <Route path="/report/:id" element={<Report />} />
