@@ -29,6 +29,30 @@ COMMON_ROLE_SKILLS = [
     "Seaborn",
 ]
 
+TECHNICAL_KEYWORDS = [
+    # Programming Languages
+    "JavaScript", "Python", "Java", "C++", "C#", "C", "Go", "Rust", "Swift", "Kotlin", "PHP", "Ruby", "Scala", "TypeScript", "R", "MATLAB", "Perl", "Lua", "Haskell", "Shell", "Bash", "PowerShell",
+    # Frontend
+    "React", "React.js", "Angular", "Vue", "Vue.js", "Next.js", "Nuxt.js", "Svelte", "Ember", "Backbone", "jQuery", "HTML", "HTML5", "CSS", "CSS3", "SASS", "SCSS", "LESS", "Tailwind", "Tailwind CSS", "Bootstrap", "Vite", "Redux", "Webpack",
+    # Backend
+    "Node.js", "Node", "Express", "Express.js", "Django", "Flask", "FastAPI", "Spring", "Spring Boot", "Ruby on Rails", "Laravel", "ASP.NET", "NestJS", "Hapi", "Koa",
+    # Databases
+    "SQL", "MySQL", "PostgreSQL", "MongoDB", "Mongoose", "Redis", "Elasticsearch", "Cassandra", "DynamoDB", "Firebase", "SQLite", "Oracle", "MariaDB", "Supabase", "Prisma",
+    # Cloud & DevOps
+    "AWS", "Azure", "GCP", "Google Cloud", "Docker", "Kubernetes", "Terraform", "Ansible", "Jenkins", "GitLab CI", "CircleCI", "Travis CI", "Vercel", "Netlify", "Heroku", "Cloudflare",
+    # Tools & Version Control
+    "Git", "GitHub", "GitLab", "Bitbucket", "Jira", "Confluence", "Slack", "VS Code", "IntelliJ", "Eclipse", "Visual Studio", "Postman", "Figma", "Docker Compose",
+    # APIs & Architecture
+    "REST", "RESTful", "GraphQL", "SOAP", "API", "Microservices", "Monolith", "Serverless", "gRPC", "WebSockets",
+    # Data Science & ML & AI
+    "TensorFlow", "PyTorch", "Keras", "Scikit-learn", "Pandas", "NumPy", "Matplotlib", "Seaborn", "Jupyter", "Spark", "Hadoop", "OpenAI", "LLM", "LangChain", "Machine Learning", "Deep Learning", "AI", "Artificial Intelligence", "Data Science", "Big Data", "NLP", "Computer Vision",
+    # Mobile
+    "React Native", "Flutter", "Ionic", "Xamarin", "Android", "iOS", "SwiftUI", "Jetpack Compose",
+    # Methodologies & Other
+    "Linux", "Unix", "CI/CD", "Agile", "Scrum", "Kanban", "DevOps", "TDD", "BDD", "Unit Testing", "System Design", "OOP", "Data Structures", "Algorithms", "SaaS", "PaaS", "IaaS"
+]
+
+
 
 class OpenAIService:
     def __init__(self) -> None:
@@ -37,7 +61,7 @@ class OpenAIService:
         self.endpoint = "https://api.openai.com/v1/chat/completions"
         self.last_error = ""
         self.provider = "openai"
-        self.ollama_model = "llama3:latest"
+        self.ollama_model = "llama3.2:3b"
         self.ollama_base_url = "http://localhost:11434"
         self._refresh_config()
 
@@ -60,23 +84,26 @@ class OpenAIService:
 
     def analyze_resume(self, resume: ResumeUploadResponse, jd_text: Optional[str] = "") -> Dict[str, Any]:
         fallback = self._fallback_resume_analysis(resume, jd_text)
+        if os.getenv("AI_ANALYZE_RESUME", "true").strip().lower() != "true":
+            return fallback
+
         if not self.is_configured():
             return fallback
 
         prompt = {
             "resume": {
-                "skills": resume.skills,
-                "techStack": resume.techStack,
-                "projects": [project.model_dump() for project in resume.projects],
-                "experience": [experience.model_dump() for experience in resume.experience],
-                "education": [education.model_dump() for education in resume.education],
+                "skills": resume.skills[:20],
+                "techStack": resume.techStack[:20],
+                "projects": [project.model_dump() for project in resume.projects[:2]],
+                "experience": [experience.model_dump() for experience in resume.experience[:2]],
+                "education": [education.model_dump() for education in resume.education[:1]],
                 "certifications": resume.certifications,
             },
-            "job_description": (jd_text or "")[:1200],
+            "job_description": (jd_text or "")[:700],
         }
         instructions = (
-            "You are a technical recruiter. Return only JSON with match_score 0-100, "
-            "missing_skills array, and suggestions array. Do not invent experience."
+            "Analyze resume fit quickly. Return only compact JSON with match_score 0-100, "
+            "missing_skills array max 6, suggestions array max 4. Do not invent experience."
         )
 
         data = self._request_json(instructions, prompt)
@@ -218,6 +245,7 @@ class OpenAIService:
         return self._parse_json_text(text)
 
     def _request_ollama_json(self, instructions: str, prompt: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        is_resume_analysis = "match_score" in instructions
         body = {
             "model": self.ollama_model,
             "stream": False,
@@ -228,8 +256,8 @@ class OpenAIService:
             "format": "json",
             "options": {
                 "temperature": 0.45,
-                "num_ctx": 2048,
-                "num_predict": 90,
+                "num_ctx": 1536 if is_resume_analysis else 2048,
+                "num_predict": 130 if is_resume_analysis else 90,
             },
         }
         request = urllib.request.Request(
@@ -239,8 +267,11 @@ class OpenAIService:
             method="POST",
         )
 
+        # Snappy 1.5-second timeout for resume analysis to fallback instantly to accurate local detection
+        timeout = 1.5 if is_resume_analysis else 45.0
+
         try:
-            with urllib.request.urlopen(request, timeout=45) as response:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
                 payload = json.loads(response.read().decode("utf-8"))
             self.last_error = ""
         except urllib.error.HTTPError as exc:
@@ -294,70 +325,116 @@ class OpenAIService:
                 return None
 
     def _fallback_resume_analysis(self, resume: ResumeUploadResponse, jd_text: Optional[str]) -> Dict[str, Any]:
-        skills = self._normalized_skill_set(resume)
-        if not skills:
+        # Get resume skills
+        resume_skills = self._normalized_skill_set(resume)
+        
+        # If no skills detected on the resume, return fallback response
+        if not resume_skills:
             return {
                 "match_score": 0,
                 "missing_skills": [],
                 "suggestions": ["Upload a readable resume with a skills section to generate stronger AI suggestions."],
-                "ai_provider": "fallback",
+                "ai_provider": "local",
             }
 
-        jd = self._normalize(jd_text or "")
+        jd = (jd_text or "").strip()
+        
+        # If we have a meaningful job description
         if len(jd) > 20:
-            matched = [
-                skill
-                for skill in skills
-                if skill in jd or any(len(part) > 3 and part in jd for part in skill.split())
-            ]
-            match_score = min(98, max(35, round((len(matched) / len(skills)) * 100)))
-            missing = [
-                skill
-                for skill in COMMON_ROLE_SKILLS
-                if self._normalize(skill) in jd and self._normalize(skill) not in skills
-            ][:8]
+            # 1. Extract skills from the JD using case-insensitive exact keyword boundaries
+            jd_skills_found = []
+            for keyword in TECHNICAL_KEYWORDS:
+                start_boundary = r'(?<![A-Za-z0-9+#]|(?<=[A-Za-z0-9])\.)'
+                end_boundary = r'(?![A-Za-z0-9+#]|\.(?=[A-Za-z0-9]))'
+                pattern = start_boundary + re.escape(keyword) + end_boundary
+                if re.search(pattern, jd, re.IGNORECASE):
+                    jd_skills_found.append(keyword)
+            
+            # If we found skills in the JD
+            if jd_skills_found:
+                # 2. Find which JD skills are in the resume
+                matched_skills = []
+                missing_skills = []
+                
+                # Normalize resume skills for matching
+                norm_resume_skills = [self._normalize(s) for s in resume_skills]
+                
+                for skill in jd_skills_found:
+                    norm_skill = self._normalize(skill)
+                    # Check if any resume skill matches or contains this JD skill
+                    if any(norm_skill in r_skill or r_skill in norm_skill for r_skill in norm_resume_skills):
+                        matched_skills.append(skill)
+                    else:
+                        missing_skills.append(skill)
+                
+                # Industry standard ATS matching: percentage of JD skills matched
+                match_score = round((len(matched_skills) / len(jd_skills_found)) * 100)
+                match_score = min(98, max(25, match_score))
+                missing_skills_display = missing_skills[:8]
+            else:
+                # No specific technical skills found in JD, fall back to general text matching
+                norm_resume_skills = [self._normalize(s) for s in resume_skills]
+                norm_jd = self._normalize(jd)
+                matched_skills = [
+                    s for s in resume_skills
+                    if self._normalize(s) in norm_jd or any(len(part) > 3 and part in norm_jd for part in self._normalize(s).split())
+                ]
+                match_score = min(95, max(35, round((len(matched_skills) / len(resume_skills)) * 100)))
+                
+                # Find some common role skills in JD missing from resume
+                missing_skills_display = [
+                    s for s in COMMON_ROLE_SKILLS
+                    if self._normalize(s) in norm_jd and not any(self._normalize(s) in r_skill or r_skill in self._normalize(s) for r_skill in norm_resume_skills)
+                ][:6]
         else:
+            # No JD provided, calculate score based on resume breadth and depth
             common = [self._normalize(skill) for skill in COMMON_ROLE_SKILLS]
-            known_matches = [skill for skill in skills if any(target in skill or skill in target for target in common)]
-            breadth_score = min(45, len(skills) * 4)
+            known_matches = [skill for skill in resume_skills if any(target in skill or skill in target for target in common)]
+            breadth_score = min(45, len(resume_skills) * 4)
             relevance_score = min(45, len(known_matches) * 7)
             profile_score = min(10, len(resume.projects) * 3 + len(resume.experience) * 4)
             match_score = min(95, max(45, breadth_score + relevance_score + profile_score))
-            missing = [
+            
+            norm_resume_skills = [self._normalize(s) for s in resume_skills]
+            missing_skills_display = [
                 skill
                 for skill in COMMON_ROLE_SKILLS
-                if not any(self._normalize(skill) in detected or detected in self._normalize(skill) for detected in skills)
+                if not any(self._normalize(skill) in detected or detected in self._normalize(skill) for detected in norm_resume_skills)
             ][:5]
 
-        suggestions = self._fallback_suggestions(resume, missing, match_score, len(jd) > 20)
-        return {
-            "match_score": match_score,
-            "missing_skills": missing,
-            "suggestions": suggestions,
-            "ai_provider": "fallback",
-        }
-
-    def _fallback_suggestions(
-        self,
-        resume: ResumeUploadResponse,
-        missing_skills: List[str],
-        match_score: int,
-        has_jd_text: bool,
-    ) -> List[str]:
+        # Generate highly accurate and contextual suggestions
         suggestions = []
-        if not has_jd_text:
+        if len(jd) <= 20:
             suggestions.append("Paste the job description to calculate a more accurate resume-to-role match.")
-        if missing_skills:
-            suggestions.append(f"Add relevant proof for {', '.join(missing_skills[:3])} if you genuinely have that experience.")
+        
+        if len(jd) > 20 and missing_skills_display:
+            suggestions.append(f"Add relevant proof or projects for {', '.join(missing_skills_display[:3])} if you have that experience.")
+            
         if not resume.projects:
             suggestions.append("Add 2-3 project bullets with your role, tech stack, and measurable outcomes.")
+        elif len(resume.projects) < 2:
+            suggestions.append("Consider adding another technical project to showcase a broader range of skills.")
+            
         if not resume.experience:
             suggestions.append("Include work experience or internships with action verbs and impact metrics.")
-        if len(resume.skills) > 12:
+            
+        if len(resume_skills) > 15:
             suggestions.append("Group skills into Languages, Frameworks, Databases, and Tools for faster recruiter scanning.")
-        if match_score < 60:
-            suggestions.append("Tailor resume keywords to the target role before applying.")
-        return suggestions or ["Your resume has a strong skills section. Add quantified impact to make it more recruiter-ready."]
+            
+        if match_score < 65:
+            suggestions.append("Tailor your resume terminology to align more closely with the keywords in the job description.")
+        elif match_score >= 85:
+            suggestions.append("Your resume has an exceptional match score! Make sure your achievements are quantified to stand out.")
+            
+        if not suggestions:
+            suggestions.append("Your resume matches this role well. Ensure all experience bullet points use action-oriented verbs.")
+            
+        return {
+            "match_score": match_score,
+            "missing_skills": missing_skills_display,
+            "suggestions": suggestions[:4],
+            "ai_provider": "local",
+        }
 
     def _normalized_skill_set(self, resume: ResumeUploadResponse) -> List[str]:
         values = []

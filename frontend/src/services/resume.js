@@ -9,6 +9,7 @@ export const uploadResume = async (file, jdText = '', jdFile = null) => {
   }
   
   const response = await api.post('/resume/upload', formData, {
+    timeout: 90000,
     headers: {
       'Content-Type': 'multipart/form-data'
     }

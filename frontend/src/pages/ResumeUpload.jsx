@@ -145,7 +145,11 @@ export default function ResumeUpload() {
       }))
       setData(response)
     } catch (err) {
-      setError(err.response?.data?.detail || 'Could not extract readable text from this resume.')
+      if (err.code === 'ECONNABORTED') {
+        setError('Resume analysis is taking too long. Try a smaller resume/JD, or switch Ollama to a faster model like llama3.2:3b.')
+      } else {
+        setError(err.response?.data?.detail || 'Resume analysis failed. Make sure the backend is running and the resume is a text-based PDF or DOCX.')
+      }
     } finally {
       setLoading(false)
     }
