@@ -1,9 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { AlertCircle, BriefcaseBusiness, FileUp, Lightbulb, Sparkles, Wand2, FileText } from 'lucide-react'
 import { AppShell, Card, PillList, ScoreRing, SectionHead, SkeletonRows } from '../components/PremiumUI'
 import { uploadResume } from '../services/resume'
-import { detectedSkills, missingSkills } from '../data/mockData'
 
 export default function ResumeUpload() {
   const [file, setFile] = useState(null)
@@ -13,8 +12,6 @@ export default function ResumeUpload() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [data, setData] = useState(null)
-
-  const detected = useMemo(() => data?.skills?.length ? data.skills : detectedSkills, [data])
 
   const handleUpload = async () => {
     if (!file) {
@@ -105,37 +102,54 @@ export default function ResumeUpload() {
 
         <Card>
           <SectionHead title="AI Suggestions" description="High-impact changes to improve recruiter and ATS alignment." />
-          <div className="activity-list">
-            {[
-              'Add measurable impact to project bullets using numbers and outcomes.',
-              'Move React, Node.js, and MongoDB into a dedicated technical skills section.',
-              'Add testing, deployment, and API design keywords for stronger role matching.',
-            ].map((item) => (
-              <div className="activity-item" key={item}>
-                <span>{item}</span>
+          {data ? (
+            <div className="activity-list">
+              {data.suggestions?.length > 0 ? data.suggestions.map((item, index) => (
+                <div className="activity-item" key={index}>
+                  <span>{item}</span>
+                  <Lightbulb size={18} color="#f59e0b" />
+                </div>
+              )) : (
+                <div className="activity-item">
+                  <span className="muted">No specific suggestions available. Your resume looks good!</span>
+                  <Sparkles size={18} color="#8b5cf6" />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="activity-list">
+              <div className="activity-item">
+                <span className="muted">Upload your resume to get AI-powered suggestions.</span>
                 <Lightbulb size={18} color="#f59e0b" />
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </Card>
       </div>
 
       <div className="result-grid">
         <Card>
-          <SectionHead title="Match Percentage" description={data ? 'Based on extracted resume signals.' : 'Demo preview until you upload.'} />
-          {loading ? <SkeletonRows /> : <ScoreRing score={data ? 82 : 78} label={data ? 'Strong Match' : 'Role Match'} />}
+          <SectionHead title="Match Percentage" description={data ? 'Based on extracted resume signals.' : 'Upload your resume to see match score.'} />
+          {loading ? <SkeletonRows /> : <ScoreRing score={data?.match_score || 0} label={data?.match_score >= 70 ? 'Strong Match' : data?.match_score >= 50 ? 'Moderate Match' : 'Needs Improvement'} />}
         </Card>
 
         <Card>
           <SectionHead title="Detected Skills" description="Skills identified from your resume and technical sections." />
-          {loading ? <SkeletonRows /> : <PillList className="scrollable-skills" items={detected} empty="Upload a readable resume to detect skills." />}
+          {loading ? <SkeletonRows /> : <PillList className="scrollable-skills" items={data?.skills || []} empty="Upload a readable resume to detect skills." />}
         </Card>
       </div>
 
       <div className="two-col">
         <Card>
           <SectionHead title="Missing Skills" description="Useful terms to add if they reflect your real experience." />
-          <PillList items={missingSkills} />
+          {data?.missing_skills?.length > 0 ? (
+            <PillList items={data.missing_skills} />
+          ) : (
+            <div className="activity-item">
+              <span className="muted">{data ? 'No missing skills identified.' : 'Upload your resume to identify missing skills.'}</span>
+              <Sparkles size={18} color="#8b5cf6" />
+            </div>
+          )}
         </Card>
 
         <Card>

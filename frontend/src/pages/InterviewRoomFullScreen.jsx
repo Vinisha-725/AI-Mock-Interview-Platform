@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bot, Clock3, Mic, MicOff, Send, X, Volume2, AlertCircle, CheckCircle2, Video, VideoOff } from 'lucide-react'
 import { startInterview, submitAnswer, endInterview } from '../services/interview'
-import { detectedSkills, missingSkills } from '../data/mockData'
 
 export default function InterviewRoomFullScreen() {
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -119,11 +118,8 @@ export default function InterviewRoomFullScreen() {
     
     try {
       const response = await startInterview({
-        skills: detectedSkills,
-        projects: [
-          { name: 'E-commerce Platform', description: 'Full-stack web application', tech: ['React', 'Node.js', 'MongoDB'] },
-          { name: 'Task Manager', description: 'Productivity app', tech: ['React', 'Firebase'] }
-        ],
+        skills: [], // Will be populated from resume analysis in production
+        projects: [], // Will be populated from resume analysis in production
         jd_text: '',
         interview_type: type
       })
@@ -133,6 +129,8 @@ export default function InterviewRoomFullScreen() {
       setTimeRemaining(response.duration_minutes * 60)
     } catch (error) {
       console.error('Failed to start interview:', error)
+      alert('Failed to start interview. Please try again.')
+      setShowTypeSelector(true)
     }
   }
 
@@ -146,6 +144,10 @@ export default function InterviewRoomFullScreen() {
       recognitionRef.current.stop()
       setIsRecording(false)
       setIsListening(false)
+      // When stopping recording, ensure transcript is added to answer
+      if (transcript.trim()) {
+        setAnswer(prev => prev.trim() + ' ' + transcript.trim())
+      }
     } else {
       recognitionRef.current.start()
       setIsRecording(true)
@@ -155,13 +157,18 @@ export default function InterviewRoomFullScreen() {
   }
 
   const submitAnswerHandler = async () => {
-    if (!answer.trim() || !interviewId) return
+    const trimmedAnswer = answer.trim()
+    if (!trimmedAnswer || !interviewId) {
+      console.log('Cannot submit: answer empty or no interview ID', { answer: trimmedAnswer, interviewId })
+      return
+    }
 
     try {
+      console.log('Submitting answer:', { interviewId, questionId: currentQuestion?.id, answer: trimmedAnswer })
       const response = await submitAnswer({
         interview_id: interviewId,
         question_id: currentQuestion.id,
-        answer: answer,
+        answer: trimmedAnswer,
         answer_type: isRecording ? 'voice' : 'text',
         transcription: transcript
       })
@@ -197,6 +204,7 @@ export default function InterviewRoomFullScreen() {
       }
     } catch (error) {
       console.error('Failed to submit answer:', error)
+      alert('Failed to submit answer. Please try again.')
     }
   }
 
