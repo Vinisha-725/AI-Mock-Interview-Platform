@@ -2,6 +2,7 @@ from typing import List, Optional
 from models import Question, Project
 import uuid
 from datetime import datetime
+import re
 
 class AIService:
     def __init__(self):
@@ -62,11 +63,40 @@ class AIService:
 
     def _format_question(self, question: Question, skill: Optional[str] = None, project_name: Optional[str] = None) -> Question:
         formatted = question.model_copy()
-        if skill:
-            formatted.question = formatted.question.replace("{skill}", skill)
-        if project_name:
-            formatted.question = formatted.question.replace("{project_name}", project_name)
+        has_skill = self._has_placeholder_value(skill)
+        has_project = self._has_placeholder_value(project_name)
+
+        if has_skill:
+            formatted.question = formatted.question.replace("{skill}", str(skill).strip())
+        else:
+            formatted.question = formatted.question.replace("experience with {skill}", "experience with web development")
+            formatted.question = formatted.question.replace("a {skill} application", "a web application")
+            formatted.question = formatted.question.replace("using {skill}", "using modern web technologies")
+            formatted.question = formatted.question.replace("clean {skill} code", "clean, maintainable code")
+            formatted.question = formatted.question.replace("in {skill}", "in a web application")
+            formatted.question = formatted.question.replace("{skill}", "web development")
+
+        if has_project:
+            formatted.question = formatted.question.replace("{project_name}", str(project_name).strip())
+        else:
+            formatted.question = formatted.question.replace("your {project_name} project", "your most relevant project")
+            formatted.question = formatted.question.replace("in {project_name}", "in your most relevant project")
+            formatted.question = formatted.question.replace("scale {project_name}", "scale your most relevant project")
+            formatted.question = formatted.question.replace("rebuild {project_name}", "rebuild your most relevant project")
+            formatted.question = formatted.question.replace("{project_name}", "your most relevant project")
+
+        formatted.question = re.sub(r"\{[^}]+\}", "your experience", formatted.question)
         return formatted
+
+    def _has_placeholder_value(self, value: Optional[str]) -> bool:
+        if not value:
+            return False
+
+        value = str(value).strip()
+        if not value or value.lower() in {"no skills detected", "none", "n/a", "unknown"}:
+            return False
+
+        return True
 
     def get_first_question(self, skills: List[str], projects: List[Project], jd_text: Optional[str] = None, interview_type: str = "ai", session_id: str = None) -> Question:
         if session_id and session_id not in self.used_questions:
@@ -95,7 +125,7 @@ class AIService:
         elif interview_type == "aptitude":
             return self._get_unused_question_from_list(self.aptitude_questions, session_id)
         
-        return self.question_bank["technical"][0]
+        return self._format_question(self.question_bank["technical"][0])
 
     def get_next_question(self, session_id: str, previous_score: int, skills: List[str], projects: List[Project], interview_type: str = "ai") -> Optional[Question]:
         if interview_type == "ai":

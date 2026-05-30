@@ -1,4 +1,5 @@
-import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import {
   Bell,
@@ -76,6 +77,24 @@ export function LandingNav() {
 
 export function AppShell({ children, title, description, variant = 'candidate' }) {
   const navItems = variant === 'recruiter' ? recruiterSidebarItems : sidebarItems
+  const location = useLocation()
+
+  useEffect(() => {
+    if (!location.hash) return
+
+    window.requestAnimationFrame(() => {
+      document.querySelector(location.hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [location.hash])
+
+  const isNavActive = (itemPath, routerActive) => {
+    const [pathname, hash = ''] = itemPath.split('#')
+    if (hash) {
+      return location.pathname === pathname && location.hash === `#${hash}`
+    }
+
+    return routerActive && !location.hash
+  }
 
   return (
     <div className="shell">
@@ -85,7 +104,7 @@ export function AppShell({ children, title, description, variant = 'candidate' }
           {navItems.map((item) => {
             const Icon = item.icon
             return (
-              <NavLink key={item.label} to={item.path} className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+              <NavLink key={item.label} to={item.path} className={({ isActive }) => `sidebar-link ${isNavActive(item.path, isActive) ? 'active' : ''}`}>
                 <Icon size={18} />
                 <span>{item.label}</span>
               </NavLink>

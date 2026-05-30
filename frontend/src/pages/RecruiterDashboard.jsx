@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useMemo, useRef, useState } from 'react'
 import {
   Bar,
   BarChart,
@@ -34,8 +35,33 @@ import {
 } from '../data/mockData'
 
 export default function RecruiterDashboard() {
+  const defaultShortlist = useMemo(() => recruiterCandidates.filter((candidate) => candidate.readiness >= 80).map((candidate) => candidate.id), [])
+  const [shortlistedIds, setShortlistedIds] = useState(defaultShortlist)
+  const [scheduledIds, setScheduledIds] = useState([])
+  const [notice, setNotice] = useState('')
+  const noticeTimerRef = useRef(null)
+
+  const showNotice = (message) => {
+    setNotice(message)
+    window.clearTimeout(noticeTimerRef.current)
+    noticeTimerRef.current = window.setTimeout(() => setNotice(''), 2200)
+  }
+
+  const toggleShortlist = (candidate) => {
+    setShortlistedIds((current) => {
+      const exists = current.includes(candidate.id)
+      showNotice(exists ? `${candidate.name} removed from shortlist` : `${candidate.name} shortlisted`)
+      return exists ? current.filter((id) => id !== candidate.id) : [...current, candidate.id]
+    })
+  }
+
+  const scheduleInterview = (candidate) => {
+    setScheduledIds((current) => current.includes(candidate.id) ? current : [...current, candidate.id])
+    showNotice(`Interview scheduled for ${candidate.name}`)
+  }
+
   const topCandidates = recruiterCandidates
-    .filter((candidate) => candidate.readiness >= 80)
+    .filter((candidate) => shortlistedIds.includes(candidate.id))
     .sort((a, b) => b.readiness - a.readiness)
 
   return (
@@ -44,6 +70,8 @@ export default function RecruiterDashboard() {
       title="Recruiter Overview"
       description="Evaluate candidates, track hiring readiness, review AI reports, and manage your hiring pipeline."
     >
+      {notice && <div className="inline-toast">{notice}</div>}
+
       <div className="dashboard-grid recruiter-overview">
         {recruiterOverview.map((item, index) => (
           <StatCard
@@ -95,13 +123,16 @@ export default function RecruiterDashboard() {
                   <td>{candidate.resumeMatch}%</td>
                   <td>{candidate.readiness}%</td>
                   <td>{candidate.interviewScore}%</td>
-                  <td><RecommendationBadge value={candidate.recommendation} /></td>
+                  <td>
+                    <RecommendationBadge value={candidate.recommendation} />
+                    {scheduledIds.includes(candidate.id) && <span className="pill" style={{ marginLeft: 8 }}>Scheduled</span>}
+                  </td>
                   <td>
                     <div className="table-actions">
                       <Link className="mini-action" to={`/candidate-profile/${candidate.id}`} title="View Profile"><Eye size={15} /></Link>
                       <Link className="mini-action" to={`/recruiter-report/${candidate.id}`} title="View Report"><FileText size={15} /></Link>
-                      <button className="mini-action" title="Schedule Interview"><CalendarClock size={15} /></button>
-                      <button className="mini-action" title="Shortlist Candidate"><Star size={15} /></button>
+                      <button className={`mini-action ${scheduledIds.includes(candidate.id) ? 'active' : ''}`} onClick={() => scheduleInterview(candidate)} title="Schedule Interview"><CalendarClock size={15} /></button>
+                      <button className={`mini-action ${shortlistedIds.includes(candidate.id) ? 'active' : ''}`} onClick={() => toggleShortlist(candidate)} title="Shortlist Candidate"><Star size={15} /></button>
                     </div>
                   </td>
                 </tr>
@@ -130,7 +161,7 @@ export default function RecruiterDashboard() {
         <Card id="shortlist">
           <SectionHead title="Shortlisted Candidates" description="Highest readiness scores and best resume matches." />
           <div className="activity-list">
-            {topCandidates.map((candidate) => (
+            {topCandidates.length ? topCandidates.map((candidate) => (
               <div className="activity-item" key={candidate.id}>
                 <div>
                   <strong>{candidate.name}</strong>
@@ -138,7 +169,12 @@ export default function RecruiterDashboard() {
                 </div>
                 <span className="pill">{candidate.readiness}% ready</span>
               </div>
-            ))}
+            )) : (
+              <div className="activity-item">
+                <span className="muted">No candidates shortlisted yet.</span>
+                <Star size={18} color="#8b5cf6" />
+              </div>
+            )}
           </div>
         </Card>
       </div>

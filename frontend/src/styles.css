@@ -1514,6 +1514,27 @@ button {
   background: rgba(99, 102, 241, 0.16);
 }
 
+.mini-action.active {
+  color: #fef3c7;
+  border-color: rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.18);
+}
+
+.inline-toast {
+  position: sticky;
+  top: 88px;
+  z-index: 12;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 18px auto;
+  padding: 12px 16px;
+  border-radius: 14px;
+  color: var(--text);
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.92), rgba(139, 92, 246, 0.86));
+  border: 1px solid rgba(196, 181, 253, 0.3);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.24);
+}
+
 .pipeline-track {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
