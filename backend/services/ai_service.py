@@ -60,6 +60,14 @@ class AIService:
     def generate_interview_id(self) -> str:
         return f"interview_{uuid.uuid4().hex[:8]}"
 
+    def _format_question(self, question: Question, skill: Optional[str] = None, project_name: Optional[str] = None) -> Question:
+        formatted = question.model_copy()
+        if skill:
+            formatted.question = formatted.question.replace("{skill}", skill)
+        if project_name:
+            formatted.question = formatted.question.replace("{project_name}", project_name)
+        return formatted
+
     def get_first_question(self, skills: List[str], projects: List[Project], jd_text: Optional[str] = None, interview_type: str = "ai", session_id: str = None) -> Question:
         if session_id and session_id not in self.used_questions:
             self.used_questions[session_id] = set()
@@ -70,15 +78,13 @@ class AIService:
                 skill = skills[0]
                 question = self._get_unused_question("technical", session_id)
                 if question:
-                    question.question = question.question.replace("{skill}", skill)
-                    return question
+                    return self._format_question(question, skill=skill)
             
             if projects and len(projects) > 0:
                 project = projects[0]
                 question = self._get_unused_question("project", session_id)
                 if question:
-                    question.question = question.question.replace("{project_name}", project.name)
-                    return question
+                    return self._format_question(question, project_name=project.name)
             
             # Fallback to behavioral question
             return self._get_unused_question("behavioral", session_id)
@@ -102,10 +108,11 @@ class AIService:
                 category = "technical"
             
             question = self._get_unused_question(category, session_id)
-            if question and skills:
-                skill = skills[len(self.used_questions.get(session_id, set())) % len(skills)]
-                question.question = question.question.replace("{skill}", skill)
-            return question
+            if question:
+                skill = skills[len(self.used_questions.get(session_id, set())) % len(skills)] if skills else None
+                project_name = projects[0].name if projects else None
+                return self._format_question(question, skill=skill, project_name=project_name)
+            return None
         
         elif interview_type == "dsa":
             return self._get_unused_question_from_list(self.dsa_questions, session_id)
@@ -129,7 +136,7 @@ class AIService:
         if available_questions:
             question = available_questions[0]
             self.used_questions[session_id].add(question.id)
-            return question
+            return question.model_copy()
         
         return None
 
@@ -147,7 +154,7 @@ class AIService:
         if available_questions:
             question = available_questions[0]
             self.used_questions[session_id].add(question.id)
-            return question
+            return question.model_copy()
         
         return None
 

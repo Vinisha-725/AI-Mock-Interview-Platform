@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from models import (
     InterviewStartRequest, InterviewStartResponse, AnswerSubmission, AnswerResponse,
-    InterviewSession, SessionHistory
+    InterviewSession, SessionHistory, Question
 )
 from services.ai_service import ai_service
 from datetime import datetime
@@ -12,6 +12,7 @@ router = APIRouter()
 # In-memory storage for interview sessions (in production, use a database)
 interview_sessions: Dict[str, InterviewSession] = {}
 session_history: Dict[str, SessionHistory] = {}
+interview_questions: Dict[str, Dict[str, Question]] = {}
 
 @router.post("/interview/start", response_model=InterviewStartResponse)
 async def start_interview(request: InterviewStartRequest):
@@ -36,6 +37,7 @@ async def start_interview(request: InterviewStartRequest):
     )
     
     interview_sessions[interview_id] = session
+    interview_questions[interview_id] = {}
     
     # Get first question
     question = ai_service.get_first_question(
@@ -47,6 +49,7 @@ async def start_interview(request: InterviewStartRequest):
     )
     
     session.questions_asked.append(question.id)
+    interview_questions[interview_id][question.id] = question
     
     return InterviewStartResponse(
         interview_id=interview_id,
@@ -67,17 +70,11 @@ async def submit_answer(submission: AnswerSubmission):
     if session.status != "active":
         raise HTTPException(status_code=400, detail="Interview is not active")
     
-    # Find the current question
-    current_question_id = session.questions_asked[-1]
-    
-    # Create a mock question object for evaluation
-    from models import Question
-    current_question = Question(
-        id=current_question_id,
-        question="Current question",
-        difficulty="medium",
-        category="technical"
-    )
+    # Find the actual question being answered so scoring uses the right category.
+    current_question_id = submission.question_id or session.questions_asked[-1]
+    current_question = interview_questions.get(interview_id, {}).get(current_question_id)
+    if current_question is None:
+        raise HTTPException(status_code=400, detail="Question not found for this interview session")
     
     # Evaluate the answer
     score, feedback, is_correct = ai_service.evaluate_answer(current_question, submission.answer)
@@ -118,6 +115,7 @@ async def submit_answer(submission: AnswerSubmission):
         
         if next_question:
             session.questions_asked.append(next_question.id)
+            interview_questions[interview_id][next_question.id] = next_question
         else:
             interview_ended = True
             end_reason = "No more questions available"
@@ -150,6 +148,7 @@ async def submit_answer(submission: AnswerSubmission):
         score=score,
         feedback=feedback,
         is_correct=is_correct,
+        total_score=session.total_score,
         next_question=next_question,
         interview_ended=interview_ended,
         end_reason=end_reason
