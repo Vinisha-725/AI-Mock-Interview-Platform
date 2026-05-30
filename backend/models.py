@@ -1,21 +1,26 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict
 from datetime import datetime
+from typing import Dict, List, Optional
+
+from pydantic import BaseModel, Field
+
 
 class Project(BaseModel):
     name: str
     description: str
     tech: List[str]
 
+
 class Experience(BaseModel):
     company: str
     role: str
     duration: str
 
+
 class Education(BaseModel):
     degree: str
     institution: str
     year: str
+
 
 class ResumeUploadResponse(BaseModel):
     skills: List[str]
@@ -30,6 +35,7 @@ class ResumeUploadResponse(BaseModel):
     ai_provider: str = "fallback"
     jd_text: str = ""
 
+
 class Question(BaseModel):
     id: str
     question: str
@@ -38,11 +44,13 @@ class Question(BaseModel):
     follow_up_to: Optional[str] = None
     source: str = "local"
 
+
 class InterviewStartRequest(BaseModel):
     skills: List[str]
     projects: List[Project]
     jd_text: Optional[str] = None
-    interview_type: str = "ai"  # "ai", "dsa", "aptitude"
+    interview_type: str = "ai"
+
 
 class InterviewStartResponse(BaseModel):
     interview_id: str
@@ -50,12 +58,14 @@ class InterviewStartResponse(BaseModel):
     duration_minutes: int
     start_time: str
 
+
 class AnswerSubmission(BaseModel):
     interview_id: str
     question_id: str
     answer: str
-    answer_type: str = "text"  # "text" or "voice"
+    answer_type: str = "text"
     transcription: Optional[str] = None
+
 
 class AnswerResponse(BaseModel):
     score: int
@@ -65,6 +75,7 @@ class AnswerResponse(BaseModel):
     next_question: Optional[Question] = None
     interview_ended: bool = False
     end_reason: Optional[str] = None
+
 
 class InterviewSession(BaseModel):
     interview_id: str
@@ -80,7 +91,8 @@ class InterviewSession(BaseModel):
     scores: List[int]
     consecutive_wrong_answers: int
     total_score: int
-    status: str  # "active", "completed", "terminated"
+    status: str
+
 
 class SessionHistory(BaseModel):
     session_id: str
@@ -90,6 +102,7 @@ class SessionHistory(BaseModel):
     total_score: int
     questions_count: int
     status: str
+
 
 class Report(BaseModel):
     readiness_score: int

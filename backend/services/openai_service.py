@@ -72,15 +72,11 @@ class OpenAIService:
                 "education": [education.model_dump() for education in resume.education],
                 "certifications": resume.certifications,
             },
-            "job_description": jd_text or "",
+            "job_description": (jd_text or "")[:1200],
         }
-
         instructions = (
-            "You are an expert technical recruiter and resume reviewer. "
-            "Analyze the structured resume against the job description when provided. "
-            "Return only valid JSON with keys: match_score as an integer 0-100, "
-            "missing_skills as an array of concise skill names, and suggestions as an array "
-            "of 3-5 specific resume improvement suggestions. Do not invent experience."
+            "You are a technical recruiter. Return only JSON with match_score 0-100, "
+            "missing_skills array, and suggestions array. Do not invent experience."
         )
 
         data = self._request_json(instructions, prompt)
@@ -97,20 +93,18 @@ class OpenAIService:
     def evaluate_answer(self, question: Question, answer: str) -> Optional[Dict[str, Any]]:
         if os.getenv("AI_SCORE_ANSWERS", "false").strip().lower() != "true":
             return None
-
         if not self.is_configured() or not answer.strip():
             return None
 
         instructions = (
-            "You are an AI mock interview evaluator. Score the candidate answer fairly. "
-            "Return only valid JSON with keys: score as an integer 0-100, "
-            "is_correct as a boolean, and feedback as one concise coaching sentence."
+            "You are an AI mock interview evaluator. Return only JSON with score 0-100, "
+            "is_correct boolean, and one concise feedback sentence."
         )
         prompt = {
             "question": question.question,
             "category": question.category,
             "difficulty": question.difficulty,
-            "candidate_answer": answer,
+            "candidate_answer": answer[:1600],
         }
         data = self._request_json(instructions, prompt)
         if not data:
@@ -121,7 +115,7 @@ class OpenAIService:
         return {
             "score": score,
             "is_correct": bool(data.get("is_correct", score >= 60)),
-            "feedback": feedback or "Good attempt. Add more concrete examples and tradeoffs to strengthen the answer.",
+            "feedback": feedback or "Good attempt. Add more concrete examples to strengthen the answer.",
         }
 
     def generate_interview_question(
@@ -141,7 +135,7 @@ class OpenAIService:
 
         project_payload = [
             project.model_dump() if hasattr(project, "model_dump") else project
-            for project in projects[:3]
+            for project in projects[:1]
         ]
         instructions = (
             "Generate one concise mock interview question. Personalize it to the candidate context. "
@@ -150,7 +144,7 @@ class OpenAIService:
         prompt = {
             "interview_type": interview_type,
             "skills": skills[:8],
-            "projects": project_payload[:1],
+            "projects": project_payload,
             "job_description": (jd_text or "")[:700],
             "question_number": question_number,
             "previous_questions": previous_questions[-4:],
@@ -183,7 +177,9 @@ class OpenAIService:
     def _request_json(self, instructions: str, prompt: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         if self.provider == "ollama":
             return self._request_ollama_json(instructions, prompt)
+        return self._request_openai_json(instructions, prompt)
 
+    def _request_openai_json(self, instructions: str, prompt: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         body = {
             "model": self.model,
             "messages": [
@@ -219,19 +215,49 @@ class OpenAIService:
             return None
 
         text = self._extract_output_text(payload)
-        if not text:
-            return None
+        return self._parse_json_text(text)
+
+    def _request_ollama_json(self, instructions: str, prompt: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        body = {
+            "model": self.ollama_model,
+            "stream": False,
+            "messages": [
+                {"role": "system", "content": instructions},
+                {"role": "user", "content": json.dumps(prompt, ensure_ascii=True)},
+            ],
+            "format": "json",
+            "options": {
+                "temperature": 0.45,
+                "num_ctx": 2048,
+                "num_predict": 90,
+            },
+        }
+        request = urllib.request.Request(
+            f"{self.ollama_base_url}/api/chat",
+            data=json.dumps(body).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
 
         try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            match = re.search(r"\{.*\}", text, re.DOTALL)
-            if not match:
-                return None
-            try:
-                return json.loads(match.group(0))
-            except json.JSONDecodeError:
-                return None
+            with urllib.request.urlopen(request, timeout=45) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+            self.last_error = ""
+        except urllib.error.HTTPError as exc:
+            error_body = exc.read().decode("utf-8", errors="ignore")
+            self.last_error = f"Ollama request failed ({exc.code}): {error_body[:300]}"
+            print(self.last_error)
+            return None
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
+            self.last_error = (
+                f"Ollama is not reachable at {self.ollama_base_url}. "
+                f"Make sure Ollama is running and {self.ollama_model} is installed. Details: {exc}"
+            )
+            print(self.last_error)
+            return None
+
+        text = str(payload.get("message", {}).get("content") or "").strip()
+        return self._parse_json_text(text)
 
     def _extract_output_text(self, payload: Dict[str, Any]) -> str:
         choices = payload.get("choices") or []
@@ -249,6 +275,23 @@ class OpenAIService:
                 if "text" in content:
                     parts.append(str(content["text"]))
         return "\n".join(parts).strip()
+
+    def _parse_json_text(self, text: str) -> Optional[Dict[str, Any]]:
+        if not text:
+            self.last_error = f"{self.provider.title()} returned an empty response."
+            return None
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            match = re.search(r"\{.*\}", text, re.DOTALL)
+            if not match:
+                self.last_error = f"{self.provider.title()} returned non-JSON text: {text[:200]}"
+                return None
+            try:
+                return json.loads(match.group(0))
+            except json.JSONDecodeError:
+                self.last_error = f"{self.provider.title()} returned invalid JSON: {text[:200]}"
+                return None
 
     def _fallback_resume_analysis(self, resume: ResumeUploadResponse, jd_text: Optional[str]) -> Dict[str, Any]:
         skills = self._normalized_skill_set(resume)
@@ -342,63 +385,6 @@ class OpenAIService:
             return fallback
         return max(0, min(100, score))
 
-    def _request_ollama_json(self, instructions: str, prompt: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        body = {
-            "model": self.ollama_model,
-            "stream": False,
-            "messages": [
-                {"role": "system", "content": instructions},
-                {"role": "user", "content": json.dumps(prompt, ensure_ascii=True)},
-            ],
-            "format": "json",
-            "options": {
-                "temperature": 0.45,
-                "num_ctx": 2048,
-                "num_predict": 90,
-            },
-        }
-        request = urllib.request.Request(
-            f"{self.ollama_base_url}/api/chat",
-            data=json.dumps(body).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-
-        try:
-            with urllib.request.urlopen(request, timeout=45) as response:
-                payload = json.loads(response.read().decode("utf-8"))
-            self.last_error = ""
-        except urllib.error.HTTPError as exc:
-            error_body = exc.read().decode("utf-8", errors="ignore")
-            self.last_error = f"Ollama request failed ({exc.code}): {error_body[:300]}"
-            print(self.last_error)
-            return None
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
-            self.last_error = (
-                f"Ollama is not reachable at {self.ollama_base_url}. "
-                f"Make sure Ollama is running and {self.ollama_model} is installed. Details: {exc}"
-            )
-            print(self.last_error)
-            return None
-
-        text = str(payload.get("message", {}).get("content") or "").strip()
-        if not text:
-            self.last_error = "Ollama returned an empty response."
-            return None
-
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            match = re.search(r"\{.*\}", text, re.DOTALL)
-            if not match:
-                self.last_error = f"Ollama returned non-JSON text: {text[:200]}"
-                return None
-            try:
-                return json.loads(match.group(0))
-            except json.JSONDecodeError:
-                self.last_error = f"Ollama returned invalid JSON: {text[:200]}"
-                return None
-
     def _format_openai_error(self, status_code: int, error_body: str) -> str:
         try:
             payload = json.loads(error_body)
@@ -410,13 +396,10 @@ class OpenAIService:
 
         if code == "insufficient_quota":
             return "OpenAI quota is exhausted. Add billing/API credits in the OpenAI dashboard, then restart the backend."
-
         if status_code == 401:
             return "OpenAI API key is invalid. Check OPENAI_API_KEY in .env, then restart the backend."
-
         if status_code == 429:
             return message or "OpenAI rate limit reached. Wait a moment or check your OpenAI billing limits."
-
         return message or f"OpenAI request failed with status {status_code}."
 
     def _difficulty_guidance(self, question_number: int, previous_score: Optional[int]) -> str:
