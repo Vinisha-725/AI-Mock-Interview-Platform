@@ -33,7 +33,7 @@ async def upload_resume(
                 job_description = resume_parser.extract_text(jd_content, jd_file.filename) or job_description
 
         ai_analysis = openai_service.analyze_resume(result, job_description)
-        result = result.model_copy(update=ai_analysis)
+        result = result.model_copy(update={**ai_analysis, "jd_text": job_description})
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     

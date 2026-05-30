@@ -24,6 +24,9 @@ export default function InterviewRoomFullScreen() {
   const [isCameraOn, setIsCameraOn] = useState(false)
   const [interviewType, setInterviewType] = useState('ai') // 'ai', 'dsa', 'aptitude'
   const [showTypeSelector, setShowTypeSelector] = useState(true)
+  const [isStarting, setIsStarting] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [resumeContextCount, setResumeContextCount] = useState(0)
   
   const recognitionRef = useRef(null)
   const videoRef = useRef(null)
@@ -57,7 +60,7 @@ export default function InterviewRoomFullScreen() {
 
   // Timer countdown
   useEffect(() => {
-    if (timeRemaining > 0 && !interviewEnded && interviewId) {
+    if (timeRemaining > 0 && !interviewEnded && interviewId && !isSubmitting) {
       const timer = setInterval(() => {
         setTimeRemaining(prev => prev - 1)
       }, 1000)
@@ -65,7 +68,7 @@ export default function InterviewRoomFullScreen() {
     } else if (timeRemaining <= 0 && interviewId) {
       handleEndInterview('Time limit reached')
     }
-  }, [timeRemaining, interviewId, interviewEnded])
+  }, [timeRemaining, interviewId, interviewEnded, isSubmitting])
 
   // Speech recognition setup
   useEffect(() => {
@@ -116,10 +119,13 @@ export default function InterviewRoomFullScreen() {
   }, [isRecording])
 
   const startInterviewSession = async (type) => {
+    if (isStarting) return
     await requestInterviewFullscreen()
     setInterviewType(type)
     setShowTypeSelector(false)
+    setIsStarting(true)
     const resumeContext = JSON.parse(localStorage.getItem('hiresense_resume_context') || '{}')
+    setResumeContextCount((resumeContext.skills || []).length)
     
     try {
       const response = await startInterview({
@@ -134,8 +140,10 @@ export default function InterviewRoomFullScreen() {
       setTimeRemaining(response.duration_minutes * 60)
     } catch (error) {
       console.error('Failed to start interview:', error)
-      alert('Failed to start interview. Please try again.')
+      alert(error.response?.data?.detail || 'Failed to start interview. Please try again.')
       setShowTypeSelector(true)
+    } finally {
+      setIsStarting(false)
     }
   }
 
@@ -163,12 +171,14 @@ export default function InterviewRoomFullScreen() {
 
   const submitAnswerHandler = async () => {
     const trimmedAnswer = answer.trim()
-    if (!trimmedAnswer || !interviewId) {
+    if (!trimmedAnswer || !interviewId || isSubmitting) {
       console.log('Cannot submit: answer empty or no interview ID', { answer: trimmedAnswer, interviewId })
       return
     }
 
     try {
+      setIsSubmitting(true)
+      setShowFeedback(false)
       console.log('Submitting answer:', { interviewId, questionId: currentQuestion?.id, answer: trimmedAnswer })
       const response = await submitAnswer({
         interview_id: interviewId,
@@ -209,7 +219,9 @@ export default function InterviewRoomFullScreen() {
       }
     } catch (error) {
       console.error('Failed to submit answer:', error)
-      alert('Failed to submit answer. Please try again.')
+      alert(error.response?.data?.detail || 'Failed to submit answer. Please try again.')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -293,7 +305,7 @@ export default function InterviewRoomFullScreen() {
             {candidateOptions.map((option) => {
               const Icon = option.icon
               return (
-                <button className="type-card" key={option.title} onClick={() => startInterviewSession(option.type)}>
+                <button className="type-card" key={option.title} onClick={() => startInterviewSession(option.type)} disabled={isStarting}>
                   <Icon size={48} />
                   <h2>{option.title}</h2>
                   <p>{option.description}</p>
@@ -344,6 +356,7 @@ export default function InterviewRoomFullScreen() {
         <div className="header-left">
           <span className="interview-type-badge">{interviewType.toUpperCase()} Interview</span>
           <span className="question-counter">Question {questionNumber}</span>
+          <span className="question-counter">{resumeContextCount ? `${resumeContextCount} resume skills loaded` : 'No resume context'}</span>
         </div>
         <div className="header-center">
           <Clock3 size={20} />
@@ -389,7 +402,7 @@ export default function InterviewRoomFullScreen() {
           </div>
           <div className="ai-status">
             <h2>AI Interviewer</h2>
-            <p>{isListening ? 'Processing your response...' : 'Waiting for your answer...'}</p>
+            <p>{isSubmitting ? 'Generating next question...' : isListening ? 'Processing your response...' : 'Waiting for your answer...'}</p>
           </div>
         </div>
 
@@ -407,7 +420,7 @@ export default function InterviewRoomFullScreen() {
                 <div className="question-header">
                   <span className="difficulty-badge">{currentQuestion.difficulty}</span>
                   <span className="category-badge">{currentQuestion.category}</span>
-                  {currentQuestion.source === 'openai' && <span className="category-badge">AI generated</span>}
+                  {['openai', 'ollama'].includes(currentQuestion.source) && <span className="category-badge">AI generated</span>}
                 </div>
                 <h2>{currentQuestion.question}</h2>
               </motion.div>
@@ -442,7 +455,7 @@ export default function InterviewRoomFullScreen() {
                 onChange={(e) => setAnswer(e.target.value)}
                 placeholder="Type your answer or use voice input..."
                 className="answer-textarea"
-                disabled={showFeedback}
+                disabled={showFeedback || isSubmitting}
               />
               
               {/* Camera Preview */}
@@ -456,6 +469,7 @@ export default function InterviewRoomFullScreen() {
                 <button
                   className={`voice-btn ${isRecording ? 'recording' : ''}`}
                   onClick={toggleRecording}
+                  disabled={isSubmitting}
                 >
                   {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
                   {isRecording ? 'Stop Recording' : 'Voice Input'}
@@ -463,10 +477,10 @@ export default function InterviewRoomFullScreen() {
                 <button
                   className="submit-btn"
                   onClick={submitAnswerHandler}
-                  disabled={!answer.trim()}
+                  disabled={!answer.trim() || isSubmitting}
                 >
                   <Send size={20} />
-                  Submit Answer
+                  {isSubmitting ? 'Generating...' : 'Submit Answer'}
                 </button>
               </div>
 

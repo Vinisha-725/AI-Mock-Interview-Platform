@@ -28,6 +28,7 @@ class ResumeUploadResponse(BaseModel):
     missing_skills: List[str] = Field(default_factory=list)
     suggestions: List[str] = Field(default_factory=list)
     ai_provider: str = "fallback"
+    jd_text: str = ""
 
 class Question(BaseModel):
     id: str

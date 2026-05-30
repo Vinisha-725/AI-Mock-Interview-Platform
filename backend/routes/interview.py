@@ -51,12 +51,9 @@ async def start_interview(request: InterviewStartRequest):
         previous_questions=[],
     )
     if question is None:
-        question = ai_service.get_first_question(
-            skills=request.skills,
-            projects=request.projects,
-            jd_text=request.jd_text,
-            interview_type=request.interview_type,
-            session_id=interview_id
+        raise HTTPException(
+            status_code=503,
+            detail=openai_service.get_last_error() or "AI could not generate an interview question."
         )
     
     session.questions_asked.append(question.id)
@@ -138,12 +135,9 @@ async def submit_answer(submission: AnswerSubmission):
             previous_score=score,
         )
         if next_question is None:
-            next_question = ai_service.get_next_question(
-                session_id=interview_id,
-                previous_score=score,
-                skills=session.skills,
-                projects=session.projects,
-                interview_type=session.interview_type
+            raise HTTPException(
+                status_code=503,
+                detail=openai_service.get_last_error() or "AI could not generate the next interview question."
             )
         
         if next_question:
