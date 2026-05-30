@@ -9,6 +9,9 @@ const initialForm = {
   email: '',
   password: '',
   role: 'candidate',
+  company: '',
+  recruiterTitle: '',
+  hiringFocus: '',
 }
 
 export default function Login() {
@@ -19,6 +22,7 @@ export default function Login() {
   const navigate = useNavigate()
 
   const isRegister = mode === 'register'
+  const isRecruiter = form.role === 'recruiter'
 
   const updateField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }))
@@ -34,7 +38,7 @@ export default function Login() {
     }
 
     if (!/^\S+@\S+\.\S+$/.test(form.email)) {
-      setError('Enter a valid email address.')
+      setError(isRecruiter ? 'Enter a valid work email address.' : 'Enter a valid email address.')
       return
     }
 
@@ -43,10 +47,28 @@ export default function Login() {
       return
     }
 
+    if (isRecruiter && form.company.trim().length < 2) {
+      setError('Enter your company name.')
+      return
+    }
+
+    if (isRegister && isRecruiter && form.recruiterTitle.trim().length < 2) {
+      setError('Enter your recruiter role or title.')
+      return
+    }
+
+    if (isRegister && isRecruiter && form.hiringFocus.trim().length < 2) {
+      setError('Enter the roles or team you are hiring for.')
+      return
+    }
+
     const user = {
       name: isRegister ? form.name.trim() : form.email.split('@')[0],
       email: form.email,
       role: form.role,
+      company: isRecruiter ? form.company.trim() : '',
+      recruiterTitle: isRecruiter ? form.recruiterTitle.trim() : '',
+      hiringFocus: isRecruiter ? form.hiringFocus.trim() : '',
       signedInAt: new Date().toISOString(),
     }
 
@@ -82,27 +104,11 @@ export default function Login() {
 
           <form onSubmit={handleSubmit}>
             <h2>{isRegister ? 'Create your account' : 'Welcome back'}</h2>
-            <p className="muted">{isRegister ? 'Set up your demo profile and continue.' : 'Use any valid demo details to continue.'}</p>
-
-            {isRegister && (
-              <label className="form-field">
-                <span>Full name</span>
-                <input value={form.name} onChange={(event) => updateField('name', event.target.value)} placeholder="Vinisha Sharma" />
-              </label>
-            )}
-
-            <label className="form-field">
-              <span>Email</span>
-              <div className="input-icon">
-                <Mail size={17} />
-                <input value={form.email} onChange={(event) => updateField('email', event.target.value)} placeholder="you@example.com" />
-              </div>
-            </label>
-
-            <label className="form-field">
-              <span>Password</span>
-              <input type="password" value={form.password} onChange={(event) => updateField('password', event.target.value)} placeholder="Minimum 6 characters" />
-            </label>
+            <p className="muted">
+              {isRecruiter
+                ? isRegister ? 'Set up your recruiter workspace and company preferences.' : 'Login with recruiter workspace details.'
+                : isRegister ? 'Set up your candidate demo profile and continue.' : 'Use candidate demo details to continue.'}
+            </p>
 
             <label className="form-field">
               <span>Continue as</span>
@@ -110,6 +116,55 @@ export default function Login() {
                 <option value="candidate">Candidate</option>
                 <option value="recruiter">Recruiter / Admin</option>
               </select>
+            </label>
+
+            {isRegister && (
+              <label className="form-field">
+                <span>Full name</span>
+                <input value={form.name} onChange={(event) => updateField('name', event.target.value)} placeholder={isRecruiter ? 'Recruiter name' : 'Candidate name'} />
+              </label>
+            )}
+
+            <label className="form-field">
+              <span>{isRecruiter ? 'Work email' : 'Email'}</span>
+              <div className="input-icon">
+                <Mail size={17} />
+                <input value={form.email} onChange={(event) => updateField('email', event.target.value)} placeholder={isRecruiter ? 'recruiter@company.com' : 'you@example.com'} />
+              </div>
+            </label>
+
+            {isRecruiter && (
+              <>
+                <label className="form-field">
+                  <span>Company name</span>
+                  <input value={form.company} onChange={(event) => updateField('company', event.target.value)} placeholder="Acme Technologies" />
+                </label>
+
+                {isRegister && (
+                  <>
+                    <label className="form-field">
+                      <span>Recruiter role</span>
+                      <select value={form.recruiterTitle} onChange={(event) => updateField('recruiterTitle', event.target.value)}>
+                        <option value="">Select role</option>
+                        <option value="Talent Acquisition Partner">Talent Acquisition Partner</option>
+                        <option value="Technical Recruiter">Technical Recruiter</option>
+                        <option value="Hiring Manager">Hiring Manager</option>
+                        <option value="HR Admin">HR Admin</option>
+                      </select>
+                    </label>
+
+                    <label className="form-field">
+                      <span>Hiring focus</span>
+                      <input value={form.hiringFocus} onChange={(event) => updateField('hiringFocus', event.target.value)} placeholder="Frontend, Backend, Data roles..." />
+                    </label>
+                  </>
+                )}
+              </>
+            )}
+
+            <label className="form-field">
+              <span>Password</span>
+              <input type="password" value={form.password} onChange={(event) => updateField('password', event.target.value)} placeholder="Minimum 6 characters" />
             </label>
 
             {error && <div className="form-error">{error}</div>}

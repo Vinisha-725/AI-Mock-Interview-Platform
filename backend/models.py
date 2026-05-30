@@ -36,7 +36,7 @@ class InterviewStartRequest(BaseModel):
     skills: List[str]
     projects: List[Project]
     jd_text: Optional[str] = None
-    interview_type: str = "ai"  # "ai", "dsa", "aptitude", "recruiter"
+    interview_type: str = "ai"  # "ai", "dsa", "aptitude"
 
 class InterviewStartResponse(BaseModel):
     interview_id: str

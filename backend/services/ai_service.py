@@ -58,15 +58,6 @@ class AIService:
             Question(id="apt_5", question="Solve: 2x + 5 = 15", difficulty="easy", category="aptitude"),
         ]
 
-        # Recruiter-focused interview questions
-        self.recruiter_questions = [
-            Question(id="rec_1", question="How would you evaluate a candidate whose resume match is high but interview confidence is low?", difficulty="medium", category="recruiter"),
-            Question(id="rec_2", question="What signals would make you move a candidate from Under Review to Ready to Hire?", difficulty="easy", category="recruiter"),
-            Question(id="rec_3", question="How would you explain an AI hiring recommendation to a hiring manager?", difficulty="medium", category="recruiter"),
-            Question(id="rec_4", question="A candidate has strong technical skills but weak communication. What next step would you recommend?", difficulty="medium", category="recruiter"),
-            Question(id="rec_5", question="How would you design a fair shortlist process using resume match, readiness score, and interview score?", difficulty="hard", category="recruiter"),
-            Question(id="rec_6", question="What recruiter dashboard metrics matter most when prioritizing candidates for final interviews?", difficulty="hard", category="recruiter"),
-        ]
 
     def generate_interview_id(self) -> str:
         return f"interview_{uuid.uuid4().hex[:8]}"
@@ -135,9 +126,6 @@ class AIService:
         elif interview_type == "aptitude":
             return self._get_unused_question_from_list(self.aptitude_questions, session_id)
 
-        elif interview_type == "recruiter":
-            return self._get_unused_question_from_list(self.recruiter_questions, session_id)
-        
         return self._format_question(self.question_bank["technical"][0])
 
     def get_next_question(self, session_id: str, previous_score: int, skills: List[str], projects: List[Project], interview_type: str = "ai") -> Optional[Question]:
@@ -163,9 +151,6 @@ class AIService:
         elif interview_type == "aptitude":
             return self._get_unused_question_from_list(self.aptitude_questions, session_id)
 
-        elif interview_type == "recruiter":
-            return self._get_unused_question_from_list(self.recruiter_questions, session_id)
-        
         return None
 
     def _get_unused_question(self, category: str, session_id: str) -> Optional[Question]:
@@ -265,15 +250,6 @@ class AIService:
             if len(answer) > 10:
                 score += 10
 
-        elif question.category == "recruiter":
-            recruiter_keywords = ["candidate", "score", "resume", "interview", "hiring", "shortlist", "recommend", "manager", "fair"]
-            matched = sum(1 for keyword in recruiter_keywords if keyword in answer_lower)
-            score += min(matched * 8, 32)
-            if len(answer) > 60:
-                score += 12
-            if len(answer) > 120:
-                score += 10
-        
         score = min(score, 100)
         is_correct = score >= 60
         

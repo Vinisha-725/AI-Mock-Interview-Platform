@@ -36,7 +36,6 @@ const sidebarItems = [
 
 const recruiterSidebarItems = [
   { label: 'Overview', path: '/admin', icon: LayoutDashboard },
-  { label: 'Practice', path: '/interview-fullscreen', icon: Mic },
   { label: 'Shortlist', path: '/admin#shortlist', icon: Star },
   { label: 'Analytics', path: '/admin#analytics', icon: Gauge },
   { label: 'Reports', path: '/recruiter-report/aarav-mehta', icon: FileSearch },

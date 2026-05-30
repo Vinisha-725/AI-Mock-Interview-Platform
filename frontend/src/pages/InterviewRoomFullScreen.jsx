@@ -28,6 +28,12 @@ export default function InterviewRoomFullScreen() {
   const recognitionRef = useRef(null)
   const videoRef = useRef(null)
 
+  useEffect(() => {
+    if (isRecruiter) {
+      window.location.href = '/admin'
+    }
+  }, [isRecruiter])
+
   const requestInterviewFullscreen = async () => {
     try {
       if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
@@ -278,35 +284,12 @@ export default function InterviewRoomFullScreen() {
       },
     ]
 
-    const recruiterOptions = [
-      {
-        type: 'recruiter',
-        icon: Bot,
-        title: 'Recruiter Screening',
-        description: 'Practice candidate evaluation, shortlist decisions, and hiring recommendations',
-      },
-      {
-        type: 'recruiter',
-        icon: Volume2,
-        title: 'Hiring Manager Brief',
-        description: 'Explain AI recommendations, readiness scores, and candidate tradeoffs clearly',
-      },
-      {
-        type: 'recruiter',
-        icon: CheckCircle2,
-        title: 'Pipeline Review',
-        description: 'Answer questions about pipeline stages, candidate fit, and final-round decisions',
-      },
-    ]
-
-    const options = isRecruiter ? recruiterOptions : candidateOptions
-
     return (
       <div className="fullscreen-interview">
         <div className="interview-type-selector">
-          <h1>{isRecruiter ? 'Select Recruiter Practice Mode' : 'Select Interview Type'}</h1>
+          <h1>Select Interview Type</h1>
           <div className="type-options">
-            {options.map((option) => {
+            {candidateOptions.map((option) => {
               const Icon = option.icon
               return (
                 <button className="type-card" key={option.title} onClick={() => startInterviewSession(option.type)}>
