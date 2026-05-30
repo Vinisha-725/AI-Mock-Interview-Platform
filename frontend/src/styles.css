@@ -561,8 +561,29 @@ button {
 .result-grid {
   display: grid;
   grid-template-columns: 0.8fr 1.2fr;
+  align-items: start;
   gap: 18px;
   margin-top: 18px;
+}
+
+.scrollable-skills {
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.scrollable-skills::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollable-skills::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 999px;
+}
+
+.scrollable-skills::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--secondary), var(--accent));
+  border-radius: 999px;
 }
 
 .score-ring {

@@ -93,7 +93,7 @@ export default function ResumeUpload() {
 
         <Card>
           <SectionHead title="Detected Skills" description="Skills identified from your resume and technical sections." />
-          {loading ? <SkeletonRows /> : <PillList items={detected} empty="Upload a readable resume to detect skills." />}
+          {loading ? <SkeletonRows /> : <PillList className="scrollable-skills" items={detected} empty="Upload a readable resume to detect skills." />}
         </Card>
       </div>
 

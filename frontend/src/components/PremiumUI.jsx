@@ -154,7 +154,7 @@ export function ScoreRing({ score = 86, label = 'Ready' }) {
   )
 }
 
-export function PillList({ items, empty = 'No data yet' }) {
+export function PillList({ items, empty = 'No data yet', className = '' }) {
   if (!items?.length) {
     return (
       <div className="activity-item">
@@ -165,7 +165,7 @@ export function PillList({ items, empty = 'No data yet' }) {
   }
 
   return (
-    <div className="skill-list">
+    <div className={`skill-list ${className}`}>
       {items.map((item) => (
         <span className="pill" key={item}>
           <Sparkles size={14} />
