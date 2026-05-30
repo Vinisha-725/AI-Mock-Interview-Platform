@@ -4,6 +4,51 @@ import { AlertCircle, BriefcaseBusiness, FileUp, Lightbulb, Sparkles, Wand2, Fil
 import { AppShell, Card, PillList, ScoreRing, SectionHead, SkeletonRows } from '../components/PremiumUI'
 import { uploadResume } from '../services/resume'
 
+const commonRoleSkills = [
+  'python',
+  'sql',
+  'java',
+  'javascript',
+  'html',
+  'css',
+  'react',
+  'node.js',
+  'mongodb',
+  'tableau',
+  'power bi',
+  'pandas',
+  'data cleaning',
+  'data manipulation',
+  'hypothesis testing',
+  'matplotlib',
+  'seaborn',
+]
+
+const normalize = (value) => value.toLowerCase().replace(/[^a-z0-9+#. ]/g, ' ').replace(/\s+/g, ' ').trim()
+
+const calculateMatchScore = (resumeData, jdText) => {
+  if (!resumeData) return 0
+
+  const skills = [...new Set([...(resumeData.skills || []), ...(resumeData.techStack || [])])]
+    .map(normalize)
+    .filter(Boolean)
+
+  if (!skills.length) return 0
+
+  const jd = normalize(jdText || '')
+  if (jd.length > 20) {
+    const matched = skills.filter((skill) => jd.includes(skill) || skill.split(' ').some((part) => part.length > 3 && jd.includes(part)))
+    return Math.min(98, Math.max(35, Math.round((matched.length / skills.length) * 100)))
+  }
+
+  const knownMatches = skills.filter((skill) => commonRoleSkills.some((target) => skill.includes(target) || target.includes(skill)))
+  const breadthScore = Math.min(45, skills.length * 4)
+  const relevanceScore = Math.min(45, knownMatches.length * 7)
+  const profileScore = Math.min(10, (resumeData.projects?.length || 0) * 3 + (resumeData.experience?.length || 0) * 4)
+
+  return Math.min(95, Math.max(45, breadthScore + relevanceScore + profileScore))
+}
+
 export default function ResumeUpload() {
   const [file, setFile] = useState(null)
   const [jdFile, setJdFile] = useState(null)
@@ -12,6 +57,8 @@ export default function ResumeUpload() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [data, setData] = useState(null)
+  const matchScore = calculateMatchScore(data, jdInputMode === 'text' ? jdText : '')
+  const matchLabel = matchScore >= 75 ? 'Strong Match' : matchScore >= 55 ? 'Moderate Match' : 'Needs Improvement'
 
   const handleUpload = async () => {
     if (!file) {
@@ -130,7 +177,7 @@ export default function ResumeUpload() {
       <div className="result-grid">
         <Card>
           <SectionHead title="Match Percentage" description={data ? 'Based on extracted resume signals.' : 'Upload your resume to see match score.'} />
-          {loading ? <SkeletonRows /> : <ScoreRing score={data?.match_score || 0} label={data?.match_score >= 70 ? 'Strong Match' : data?.match_score >= 50 ? 'Moderate Match' : 'Needs Improvement'} />}
+          {loading ? <SkeletonRows /> : <ScoreRing score={matchScore} label={matchLabel} />}
         </Card>
 
         <Card>

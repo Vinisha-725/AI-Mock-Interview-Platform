@@ -12,6 +12,7 @@ import CareerCoach from './pages/CareerCoach'
 import CandidateProfile from './pages/CandidateProfile'
 import RecruiterReport from './pages/RecruiterReport'
 import RecruiterSettings from './pages/RecruiterSettings'
+import Profile from './pages/Profile'
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
         <Route path="/candidate-profile/:id" element={<CandidateProfile />} />
         <Route path="/recruiter-report/:id" element={<RecruiterReport />} />
         <Route path="/recruiter-settings" element={<RecruiterSettings />} />
+        <Route path="/profile" element={<Profile />} />
       </Routes>
     </Router>
   )

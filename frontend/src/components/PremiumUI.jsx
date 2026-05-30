@@ -139,6 +139,10 @@ export function Topbar() {
     navigate('/login')
   }
 
+  const handleProfile = () => {
+    navigate('/profile')
+  }
+
   return (
     <div className="topbar">
       <div className="search">
@@ -155,7 +159,7 @@ export function Topbar() {
         <button className="icon-btn" aria-label="Logout" onClick={handleLogout}>
           <LogOut size={18} />
         </button>
-        <div className="avatar">{initial}</div>
+        <button className="avatar" type="button" onClick={handleProfile} aria-label="View profile">{initial}</button>
       </div>
     </div>
   )
