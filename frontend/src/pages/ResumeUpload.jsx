@@ -4,6 +4,108 @@ import { AlertCircle, BriefcaseBusiness, FileUp, Lightbulb, Sparkles, Wand2, Fil
 import { AppShell, Card, PillList, ScoreRing, SectionHead, SkeletonRows } from '../components/PremiumUI'
 import { uploadResume } from '../services/resume'
 
+const commonRoleSkills = [
+  'python',
+  'sql',
+  'java',
+  'javascript',
+  'html',
+  'css',
+  'react',
+  'node.js',
+  'mongodb',
+  'tableau',
+  'power bi',
+  'pandas',
+  'data cleaning',
+  'data manipulation',
+  'hypothesis testing',
+  'matplotlib',
+  'seaborn',
+]
+
+const normalize = (value) => value.toLowerCase().replace(/[^a-z0-9+#. ]/g, ' ').replace(/\s+/g, ' ').trim()
+
+const calculateMatchScore = (resumeData, jdText) => {
+  if (!resumeData) return 0
+
+  const skills = [...new Set([...(resumeData.skills || []), ...(resumeData.techStack || [])])]
+    .map(normalize)
+    .filter(Boolean)
+
+  if (!skills.length) return 0
+
+  const jd = normalize(jdText || '')
+  if (jd.length > 20) {
+    const matched = skills.filter((skill) => jd.includes(skill) || skill.split(' ').some((part) => part.length > 3 && jd.includes(part)))
+    return Math.min(98, Math.max(35, Math.round((matched.length / skills.length) * 100)))
+  }
+
+  const knownMatches = skills.filter((skill) => commonRoleSkills.some((target) => skill.includes(target) || target.includes(skill)))
+  const breadthScore = Math.min(45, skills.length * 4)
+  const relevanceScore = Math.min(45, knownMatches.length * 7)
+  const profileScore = Math.min(10, (resumeData.projects?.length || 0) * 3 + (resumeData.experience?.length || 0) * 4)
+
+  return Math.min(95, Math.max(45, breadthScore + relevanceScore + profileScore))
+}
+
+const getMissingSkills = (resumeData, jdText) => {
+  if (!resumeData) return []
+
+  const skills = [...new Set([...(resumeData.skills || []), ...(resumeData.techStack || [])])]
+    .map(normalize)
+    .filter(Boolean)
+  const jd = normalize(jdText || '')
+
+  if (jd.length > 20) {
+    return commonRoleSkills
+      .filter((skill) => jd.includes(skill) && !skills.some((detected) => detected.includes(skill) || skill.includes(detected)))
+      .map((skill) => skill.replace(/\b\w/g, (char) => char.toUpperCase()))
+      .slice(0, 8)
+  }
+
+  return commonRoleSkills
+    .filter((skill) => !skills.some((detected) => detected.includes(skill) || skill.includes(detected)))
+    .slice(0, 5)
+    .map((skill) => skill.replace(/\b\w/g, (char) => char.toUpperCase()))
+}
+
+const generateSuggestions = (resumeData, missingSkills, matchScore, hasJdText) => {
+  if (!resumeData) return []
+
+  const suggestions = []
+
+  if (!hasJdText) {
+    suggestions.push('Paste the job description to calculate a more accurate resume-to-role match.')
+  }
+
+  if (missingSkills.length) {
+    suggestions.push(`Consider adding relevant experience with ${missingSkills.slice(0, 3).join(', ')} if you have it.`)
+  }
+
+  if (!resumeData.projects?.length) {
+    suggestions.push('Add 2-3 project bullets with your role, tech stack, and measurable outcomes.')
+  }
+
+  if (!resumeData.experience?.length) {
+    suggestions.push('Include work experience or internships with action verbs and impact metrics.')
+  }
+
+  if ((resumeData.skills?.length || 0) > 12) {
+    suggestions.push('Group skills into categories like Languages, Frameworks, Databases, and Tools for easier scanning.')
+  }
+
+  if (matchScore < 60) {
+    suggestions.push('Tailor your resume keywords to the target role before applying.')
+  }
+
+  if (!suggestions.length) {
+    suggestions.push('Your resume has a strong skills section. Add quantified impact to make it more recruiter-ready.')
+  }
+
+  return suggestions
+}
+
 export default function ResumeUpload() {
   const [file, setFile] = useState(null)
   const [jdFile, setJdFile] = useState(null)
@@ -12,6 +114,16 @@ export default function ResumeUpload() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [data, setData] = useState(null)
+  const activeJdText = jdInputMode === 'text' ? jdText : ''
+  const backendScore = Number(data?.match_score)
+  const matchScore = data && Number.isFinite(backendScore) && backendScore > 0
+    ? backendScore
+    : calculateMatchScore(data, activeJdText)
+  const matchLabel = matchScore >= 75 ? 'Strong Match' : matchScore >= 55 ? 'Moderate Match' : 'Needs Improvement'
+  const missingSkills = data?.missing_skills?.length ? data.missing_skills : getMissingSkills(data, activeJdText)
+  const suggestions = data?.suggestions?.length
+    ? data.suggestions
+    : generateSuggestions(data, missingSkills, matchScore, activeJdText.trim().length > 20)
 
   const handleUpload = async () => {
     if (!file) {
@@ -24,7 +136,12 @@ export default function ResumeUpload() {
     setData(null)
 
     try {
-      const response = await uploadResume(file)
+      const response = await uploadResume(file, activeJdText, jdInputMode === 'file' ? jdFile : null)
+      localStorage.setItem('hiresense_resume_context', JSON.stringify({
+        skills: response.skills || [],
+        projects: response.projects || [],
+        jd_text: activeJdText,
+      }))
       setData(response)
     } catch (err) {
       setError(err.response?.data?.detail || 'Could not extract readable text from this resume.')
@@ -101,20 +218,18 @@ export default function ResumeUpload() {
         </div>
 
         <Card>
-          <SectionHead title="AI Suggestions" description="High-impact changes to improve recruiter and ATS alignment." />
+          <SectionHead
+            title="AI Suggestions"
+            description={data?.ai_provider === 'openai' ? 'Generated with OpenAI using your resume and job description.' : 'High-impact changes to improve recruiter and ATS alignment.'}
+          />
           {data ? (
             <div className="activity-list">
-              {data.suggestions?.length > 0 ? data.suggestions.map((item, index) => (
+              {suggestions.map((item, index) => (
                 <div className="activity-item" key={index}>
                   <span>{item}</span>
                   <Lightbulb size={18} color="#f59e0b" />
                 </div>
-              )) : (
-                <div className="activity-item">
-                  <span className="muted">No specific suggestions available. Your resume looks good!</span>
-                  <Sparkles size={18} color="#8b5cf6" />
-                </div>
-              )}
+              ))}
             </div>
           ) : (
             <div className="activity-list">
@@ -129,8 +244,11 @@ export default function ResumeUpload() {
 
       <div className="result-grid">
         <Card>
-          <SectionHead title="Match Percentage" description={data ? 'Based on extracted resume signals.' : 'Upload your resume to see match score.'} />
-          {loading ? <SkeletonRows /> : <ScoreRing score={data?.match_score || 0} label={data?.match_score >= 70 ? 'Strong Match' : data?.match_score >= 50 ? 'Moderate Match' : 'Needs Improvement'} />}
+          <SectionHead
+            title="Match Percentage"
+            description={data?.ai_provider === 'openai' ? 'OpenAI match analysis from extracted resume signals.' : data ? 'Based on extracted resume signals.' : 'Upload your resume to see match score.'}
+          />
+          {loading ? <SkeletonRows /> : <ScoreRing score={matchScore} label={matchLabel} />}
         </Card>
 
         <Card>
@@ -142,8 +260,8 @@ export default function ResumeUpload() {
       <div className="two-col">
         <Card>
           <SectionHead title="Missing Skills" description="Useful terms to add if they reflect your real experience." />
-          {data?.missing_skills?.length > 0 ? (
-            <PillList items={data.missing_skills} />
+          {missingSkills.length > 0 ? (
+            <PillList items={missingSkills} />
           ) : (
             <div className="activity-item">
               <span className="muted">{data ? 'No missing skills identified.' : 'Upload your resume to identify missing skills.'}</span>

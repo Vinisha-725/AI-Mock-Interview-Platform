@@ -119,12 +119,13 @@ export default function InterviewRoomFullScreen() {
     await requestInterviewFullscreen()
     setInterviewType(type)
     setShowTypeSelector(false)
+    const resumeContext = JSON.parse(localStorage.getItem('hiresense_resume_context') || '{}')
     
     try {
       const response = await startInterview({
-        skills: [], // Will be populated from resume analysis in production
-        projects: [], // Will be populated from resume analysis in production
-        jd_text: '',
+        skills: resumeContext.skills || [],
+        projects: resumeContext.projects || [],
+        jd_text: resumeContext.jd_text || '',
         interview_type: type
       })
       
@@ -406,6 +407,7 @@ export default function InterviewRoomFullScreen() {
                 <div className="question-header">
                   <span className="difficulty-badge">{currentQuestion.difficulty}</span>
                   <span className="category-badge">{currentQuestion.category}</span>
+                  {currentQuestion.source === 'openai' && <span className="category-badge">AI generated</span>}
                 </div>
                 <h2>{currentQuestion.question}</h2>
               </motion.div>

@@ -598,11 +598,20 @@ button {
 .avatar {
   width: 44px;
   height: 44px;
+  border: 0;
   border-radius: 14px;
   display: grid;
   place-items: center;
+  color: var(--text);
   background: linear-gradient(135deg, var(--secondary), var(--accent));
   font-weight: 800;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.avatar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 32px rgba(79, 70, 229, 0.32);
 }
 
 .content {
@@ -614,6 +623,39 @@ button {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 18px;
   margin-top: 24px;
+}
+
+.profile-hero {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-top: 24px;
+  margin-bottom: 18px;
+  padding: 24px;
+  border-radius: 26px;
+}
+
+.profile-avatar {
+  width: 92px;
+  height: 92px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 28px;
+  background: linear-gradient(135deg, var(--secondary), var(--accent));
+  box-shadow: 0 18px 46px rgba(79, 70, 229, 0.3);
+  font-size: 40px;
+  font-weight: 900;
+}
+
+.profile-hero h2 {
+  margin: 0 0 6px;
+  font-size: 32px;
+}
+
+.profile-hero p {
+  margin: 0 0 12px;
+  color: var(--muted);
 }
 
 .recruiter-overview {
