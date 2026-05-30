@@ -31,6 +31,12 @@ async def upload_resume(
 
     try:
         result = resume_parser.parse_resume(file_content, filename)
+        print(f"=== PARSED RESULT ===")
+        print(f"Skills: {result.skills}")
+        print(f"Tech Stack: {result.techStack}")
+        print(f"Projects: {result.projects}")
+        print(f"Experience: {result.experience}")
+
         job_description = jd_text
         if jd_file and jd_file.filename:
             jd_content = await jd_file.read()
@@ -38,7 +44,14 @@ async def upload_resume(
                 job_description = resume_parser.extract_text(jd_content, jd_file.filename) or job_description
 
         ai_analysis = openai_service.analyze_resume(result, job_description)
-        result = result.model_copy(update={**ai_analysis, "jd_text": job_description})
+        # Only update match_score, missing_skills, suggestions - don't override extracted data
+        result = result.model_copy(update={
+            "match_score": ai_analysis.get("match_score", 0),
+            "missing_skills": ai_analysis.get("missing_skills", []),
+            "suggestions": ai_analysis.get("suggestions", []),
+            "ai_provider": ai_analysis.get("ai_provider", "fallback"),
+            "jd_text": job_description
+        })
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
