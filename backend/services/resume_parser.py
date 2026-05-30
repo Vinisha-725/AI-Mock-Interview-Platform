@@ -24,7 +24,9 @@ class ResumeParser:
         return text.strip()
 
     def contains_keyword(self, text: str, keyword: str) -> bool:
-        pattern = rf'(?<![A-Za-z0-9+#.]){re.escape(keyword)}(?![A-Za-z0-9+#.])'
+        start_boundary = r'(?<![A-Za-z0-9+#]|(?<=[A-Za-z0-9])\.)'
+        end_boundary = r'(?![A-Za-z0-9+#]|\.(?=[A-Za-z0-9]))'
+        pattern = start_boundary + re.escape(keyword) + end_boundary
         return re.search(pattern, text, re.IGNORECASE) is not None
 
     def dedupe(self, values: List[str]) -> List[str]:
