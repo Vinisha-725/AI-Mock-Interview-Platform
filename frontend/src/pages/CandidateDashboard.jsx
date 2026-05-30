@@ -1,115 +1,69 @@
-import { useNavigate } from 'react-router-dom'
-import Navbar from '../components/Navbar'
-import Sidebar from '../components/Sidebar'
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { BriefcaseBusiness, CheckCircle2, Clock3, Gauge, Target } from 'lucide-react'
+import { ActivityList, AppShell, Card, SectionHead, StatCard } from '../components/PremiumUI'
+import { readinessTrend, recentActivity, skillGrowth } from '../data/mockData'
 
 export default function CandidateDashboard() {
-  const navigate = useNavigate()
-
-  // Mock profile data
-  const profile = {
-    targetRole: "Full Stack Developer",
-    experience: "3 years",
-    resume: "resume_john_doe.pdf",
-    latestScore: 78
-  }
-
-  // Mock statistics
-  const statistics = {
-    interviewsTaken: 5,
-    avgScore: 72,
-    bestScore: 85,
-    currentReadiness: 78
-  }
-
   return (
-    <div>
-      <Navbar />
-      <div style={{ display: 'flex' }}>
-        <Sidebar role="candidate" />
-        <div style={{ flex: 1, padding: '30px', backgroundColor: '#f5f5f5' }}>
-          <h1 style={{ marginBottom: '30px' }}>Candidate Dashboard</h1>
-
-          {/* Profile Summary Section */}
-          <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', marginBottom: '25px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ marginBottom: '20px', color: '#333' }}>Profile Summary</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
-              <div style={{ padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
-                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '14px' }}>Target Role</p>
-                <p style={{ margin: '0', fontSize: '18px', fontWeight: 'bold', color: '#333' }}>{profile.targetRole}</p>
-              </div>
-              <div style={{ padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
-                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '14px' }}>Experience</p>
-                <p style={{ margin: '0', fontSize: '18px', fontWeight: 'bold', color: '#333' }}>{profile.experience}</p>
-              </div>
-              <div style={{ padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
-                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '14px' }}>Resume</p>
-                <p style={{ margin: '0', fontSize: '18px', fontWeight: 'bold', color: '#333' }}>{profile.resume}</p>
-              </div>
-              <div style={{ padding: '15px', backgroundColor: '#e8f5e9', borderRadius: '8px' }}>
-                <p style={{ margin: '0 0 5px 0', color: '#666', fontSize: '14px' }}>Latest Score</p>
-                <p style={{ margin: '0', fontSize: '18px', fontWeight: 'bold', color: '#2e7d32' }}>{profile.latestScore}/100</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Actions Section */}
-          <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', marginBottom: '25px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ marginBottom: '20px', color: '#333' }}>Quick Actions</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
-              <button 
-                onClick={() => navigate('/resume-upload')}
-                style={{ padding: '25px', border: '2px solid #2196f3', borderRadius: '12px', backgroundColor: '#e3f2fd', cursor: 'pointer', transition: 'all 0.3s' }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#bbdefb'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#e3f2fd'}
-              >
-                <h3 style={{ margin: '0 0 10px 0', color: '#1976d2' }}>📄 Upload Resume</h3>
-                <p style={{ margin: '0', color: '#555' }}>Upload your resume to get started</p>
-              </button>
-              <button 
-                onClick={() => navigate('/interview-room')}
-                style={{ padding: '25px', border: '2px solid #4caf50', borderRadius: '12px', backgroundColor: '#e8f5e9', cursor: 'pointer', transition: 'all 0.3s' }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#c8e6c9'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#e8f5e9'}
-              >
-                <h3 style={{ margin: '0 0 10px 0', color: '#2e7d32' }}>🎤 Start Interview</h3>
-                <p style={{ margin: '0', color: '#555' }}>Begin your AI-powered interview</p>
-              </button>
-              <button 
-                onClick={() => navigate('/report/1')}
-                style={{ padding: '25px', border: '2px solid #ff9800', borderRadius: '12px', backgroundColor: '#fff3e0', cursor: 'pointer', transition: 'all 0.3s' }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#ffe0b2'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#fff3e0'}
-              >
-                <h3 style={{ margin: '0 0 10px 0', color: '#e65100' }}>📊 View Reports</h3>
-                <p style={{ margin: '0', color: '#555' }}>Check your interview performance</p>
-              </button>
-            </div>
-          </div>
-
-          {/* Statistics Section */}
-          <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ marginBottom: '20px', color: '#333' }}>Statistics</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
-              <div style={{ padding: '20px', backgroundColor: '#f3e5f5', borderRadius: '12px', textAlign: 'center' }}>
-                <p style={{ margin: '0 0 10px 0', color: '#666', fontSize: '14px' }}>Interviews Taken</p>
-                <p style={{ margin: '0', fontSize: '36px', fontWeight: 'bold', color: '#7b1fa2' }}>{statistics.interviewsTaken}</p>
-              </div>
-              <div style={{ padding: '20px', backgroundColor: '#e3f2fd', borderRadius: '12px', textAlign: 'center' }}>
-                <p style={{ margin: '0 0 10px 0', color: '#666', fontSize: '14px' }}>Average Score</p>
-                <p style={{ margin: '0', fontSize: '36px', fontWeight: 'bold', color: '#1976d2' }}>{statistics.avgScore}</p>
-              </div>
-              <div style={{ padding: '20px', backgroundColor: '#e8f5e9', borderRadius: '12px', textAlign: 'center' }}>
-                <p style={{ margin: '0 0 10px 0', color: '#666', fontSize: '14px' }}>Best Score</p>
-                <p style={{ margin: '0', fontSize: '36px', fontWeight: 'bold', color: '#2e7d32' }}>{statistics.bestScore}</p>
-              </div>
-              <div style={{ padding: '20px', backgroundColor: '#fff3e0', borderRadius: '12px', textAlign: 'center' }}>
-                <p style={{ margin: '0 0 10px 0', color: '#666', fontSize: '14px' }}>Current Readiness</p>
-                <p style={{ margin: '0', fontSize: '36px', fontWeight: 'bold', color: '#e65100' }}>{statistics.currentReadiness}%</p>
-              </div>
-            </div>
-          </div>
-        </div>
+    <AppShell title="Candidate Dashboard" description="Track your interview readiness, resume alignment, and weekly skill growth.">
+      <div className="dashboard-grid">
+        <StatCard icon={Gauge} label="Hiring Readiness" value="86%" change="+12% from last week" tone="#8b5cf6" />
+        <StatCard icon={Target} label="Resume Match" value="78%" change="+9% after AI suggestions" tone="#38bdf8" />
+        <StatCard icon={CheckCircle2} label="Interviews Completed" value="14" change="4 this week" tone="#22c55e" />
+        <StatCard icon={Clock3} label="Practice Time" value="8.5h" change="+2.1h this week" tone="#f59e0b" />
       </div>
-    </div>
+
+      <div className="two-col">
+        <Card className="chart-card">
+          <SectionHead title="Progress Graph" description="Readiness and confidence trend over the last six sessions." />
+          <ResponsiveContainer width="100%" height={260}>
+            <AreaChart data={readinessTrend}>
+              <defs>
+                <linearGradient id="score" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.35} />
+                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke="rgba(148,163,184,.12)" vertical={false} />
+              <XAxis dataKey="week" stroke="#9ca3af" />
+              <YAxis stroke="#9ca3af" />
+              <Tooltip contentStyle={{ background: '#111827', border: '1px solid rgba(148,163,184,.2)', borderRadius: 14 }} />
+              <Area type="monotone" dataKey="score" stroke="#8b5cf6" fill="url(#score)" strokeWidth={3} />
+              <Area type="monotone" dataKey="confidence" stroke="#38bdf8" fill="transparent" strokeWidth={3} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card>
+          <SectionHead title="Recent Activity" description="Latest AI coaching events." />
+          <ActivityList items={recentActivity} />
+        </Card>
+      </div>
+
+      <div className="two-col">
+        <Card className="chart-card">
+          <SectionHead title="Skill Growth" description="Current proficiency against target score." />
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={skillGrowth}>
+              <CartesianGrid stroke="rgba(148,163,184,.12)" vertical={false} />
+              <XAxis dataKey="skill" stroke="#9ca3af" />
+              <YAxis stroke="#9ca3af" />
+              <Tooltip contentStyle={{ background: '#111827', border: '1px solid rgba(148,163,184,.2)', borderRadius: 14 }} />
+              <Bar dataKey="current" radius={[12, 12, 0, 0]} fill="#6366f1" />
+              <Bar dataKey="target" radius={[12, 12, 0, 0]} fill="#38bdf8" opacity={0.55} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card>
+          <BriefcaseBusiness color="#a5b4fc" />
+          <h3>Next best action</h3>
+          <p>Upload the latest job description and run a focused system design mock interview for stronger role alignment.</p>
+          <div style={{ marginTop: 20 }}>
+            <a className="btn btn-primary" href="/resume-upload">Analyze JD</a>
+          </div>
+        </Card>
+      </div>
+    </AppShell>
   )
 }

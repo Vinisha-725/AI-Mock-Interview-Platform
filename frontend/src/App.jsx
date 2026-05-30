@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import Login from './pages/Login'
+import Landing from './pages/Landing'
 import CandidateDashboard from './pages/CandidateDashboard'
 import RecruiterDashboard from './pages/RecruiterDashboard'
 import InterviewRoom from './pages/InterviewRoom'
@@ -10,12 +10,16 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<Landing />} />
         <Route path="/candidate-dashboard" element={<CandidateDashboard />} />
+        <Route path="/dashboard" element={<CandidateDashboard />} />
         <Route path="/recruiter-dashboard" element={<RecruiterDashboard />} />
+        <Route path="/admin" element={<RecruiterDashboard />} />
         <Route path="/interview-room" element={<InterviewRoom />} />
         <Route path="/resume-upload" element={<ResumeUpload />} />
+        <Route path="/resume-analysis" element={<ResumeUpload />} />
         <Route path="/report/:id" element={<Report />} />
+        <Route path="/reports" element={<Report />} />
       </Routes>
     </Router>
   )

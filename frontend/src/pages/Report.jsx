@@ -1,71 +1,68 @@
-import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
-import Navbar from '../components/Navbar'
-import ScoreCard from '../components/ScoreCard'
+import { Area, AreaChart, PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tooltip } from 'recharts'
+import { Brain, MessageSquareText, ShieldCheck, Timer, Zap } from 'lucide-react'
+import { AppShell, Card, MetricCard, ScoreRing, SectionHead } from '../components/PremiumUI'
+import { radarMetrics, readinessTrend } from '../data/mockData'
 
 export default function Report() {
-  const { id } = useParams()
-  const [report, setReport] = useState(null)
-
-  useEffect(() => {
-    // Mock report data
-    setReport({
-      readiness_score: 78,
-      strengths: [
-        "Strong technical knowledge in JavaScript and React",
-        "Good communication skills",
-        "Problem-solving approach is structured"
-      ],
-      weaknesses: [
-        "Could improve on system design concepts",
-        "Needs more experience with backend technologies",
-        "Time management during coding challenges"
-      ],
-      question_count: 5,
-      total_score: 78
-    })
-  }, [id])
-
-  if (!report) {
-    return <div>Loading...</div>
-  }
-
   return (
-    <div>
-      <Navbar />
-      <div style={{ maxWidth: '800px', margin: '50px auto', padding: '20px' }}>
-        <h1>Interview Report</h1>
-        <ScoreCard score={report.total_score} questionCount={report.question_count} />
-        
-        <div style={{ marginTop: '30px' }}>
-          <h2>Readiness Score: {report.readiness_score}%</h2>
+    <AppShell title="Interview Report" description="A clear readiness report with strengths, risks, and a practical AI career roadmap.">
+      <div className="report-hero">
+        <Card>
+          <ScoreRing score={86} label="Interview Ready" />
+        </Card>
+        <div className="metric-grid">
+          <MetricCard icon={Zap} label="Technical Score" value="88" />
+          <MetricCard icon={MessageSquareText} label="Communication" value="79" />
+          <MetricCard icon={ShieldCheck} label="Confidence" value="82" />
+          <MetricCard icon={Brain} label="Attention" value="74" />
+          <MetricCard icon={Timer} label="Time Management" value="91" />
         </div>
-
-        <div style={{ marginTop: '30px', padding: '20px', backgroundColor: '#e8f5e9', borderRadius: '8px' }}>
-          <h3>Strengths</h3>
-          <ul style={{ marginTop: '10px' }}>
-            {report.strengths.map((strength, index) => (
-              <li key={index}>{strength}</li>
-            ))}
-          </ul>
-        </div>
-
-        <div style={{ marginTop: '20px', padding: '20px', backgroundColor: '#ffebee', borderRadius: '8px' }}>
-          <h3>Areas for Improvement</h3>
-          <ul style={{ marginTop: '10px' }}>
-            {report.weaknesses.map((weakness, index) => (
-              <li key={index}>{weakness}</li>
-            ))}
-          </ul>
-        </div>
-
-        <button 
-          onClick={() => window.print()}
-          style={{ padding: '10px 20px', cursor: 'pointer', marginTop: '20px' }}
-        >
-          Print Report
-        </button>
       </div>
-    </div>
+
+      <div className="two-col">
+        <Card className="chart-card">
+          <SectionHead title="Radar Chart" description="Competency balance across the interview." />
+          <ResponsiveContainer width="100%" height={280}>
+            <RadarChart data={radarMetrics}>
+              <PolarGrid stroke="rgba(148,163,184,.22)" />
+              <PolarAngleAxis dataKey="metric" stroke="#9ca3af" />
+              <Radar dataKey="score" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.28} />
+              <Tooltip contentStyle={{ background: '#111827', border: '1px solid rgba(148,163,184,.2)', borderRadius: 14 }} />
+            </RadarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card className="chart-card">
+          <SectionHead title="Performance Trend" description="Readiness growth from recent practice sessions." />
+          <ResponsiveContainer width="100%" height={280}>
+            <AreaChart data={readinessTrend}>
+              <Area type="monotone" dataKey="score" stroke="#38bdf8" fill="#38bdf8" fillOpacity={0.2} strokeWidth={3} />
+              <Tooltip contentStyle={{ background: '#111827', border: '1px solid rgba(148,163,184,.2)', borderRadius: 14 }} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+
+      <div className="three-col">
+        <Card>
+          <SectionHead title="Strengths" />
+          <div className="activity-list">
+            {['Clear project ownership', 'Strong React fundamentals', 'Good debugging narrative'].map((item) => <div className="activity-item" key={item}>{item}</div>)}
+          </div>
+        </Card>
+        <Card>
+          <SectionHead title="Weaknesses" />
+          <div className="activity-list">
+            {['Needs sharper system design tradeoffs', 'Add more metrics to answers', 'Reduce filler words'].map((item) => <div className="activity-item" key={item}>{item}</div>)}
+          </div>
+        </Card>
+        <Card>
+          <SectionHead title="AI Career Roadmap" />
+          <div className="activity-list">
+            {['Week 1: System design basics', 'Week 2: Behavioral STAR answers', 'Week 3: Timed mock interviews'].map((item) => <div className="activity-item" key={item}>{item}</div>)}
+          </div>
+        </Card>
+      </div>
+    </AppShell>
   )
 }

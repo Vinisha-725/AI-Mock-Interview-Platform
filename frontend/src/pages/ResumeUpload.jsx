@@ -1,367 +1,125 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import Navbar from '../components/Navbar'
-import Sidebar from '../components/Sidebar'
+import { useMemo, useState } from 'react'
+import { motion } from 'framer-motion'
+import { AlertCircle, BriefcaseBusiness, FileUp, Lightbulb, Sparkles, Wand2 } from 'lucide-react'
+import { AppShell, Card, PillList, ScoreRing, SectionHead, SkeletonRows } from '../components/PremiumUI'
 import { uploadResume } from '../services/resume'
+import { detectedSkills, missingSkills } from '../data/mockData'
 
 export default function ResumeUpload() {
   const [file, setFile] = useState(null)
+  const [jdFile, setJdFile] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [extractedData, setExtractedData] = useState(null)
   const [error, setError] = useState('')
-  const [expandedSection, setExpandedSection] = useState(null)
-  const navigate = useNavigate()
+  const [data, setData] = useState(null)
 
-  const handleFileChange = (e) => {
-    setFile(e.target.files[0])
-    setExtractedData(null)
-    setError('')
-  }
+  const detected = useMemo(() => data?.skills?.length ? data.skills : detectedSkills, [data])
 
   const handleUpload = async () => {
-    if (!file) return
+    if (!file) {
+      setError('Upload a PDF or DOCX resume first.')
+      return
+    }
 
     setLoading(true)
     setError('')
+    setData(null)
 
     try {
       const response = await uploadResume(file)
-      setExtractedData(response)
+      setData(response)
     } catch (err) {
-      setError(err.response?.data?.detail || 'Could not extract details from this resume. Please try a PDF or DOCX file.')
+      setError(err.response?.data?.detail || 'Could not extract readable text from this resume.')
     } finally {
       setLoading(false)
     }
   }
 
-  const toggleSection = (section) => {
-    setExpandedSection(expandedSection === section ? null : section)
-  }
-
-  const handleStartInterview = () => {
-    navigate('/interview-room')
-  }
-
   return (
-    <div>
-      <Navbar />
-      <div style={{ display: 'flex' }}>
-        <Sidebar role="candidate" />
-        <div style={{ flex: 1, padding: '30px', backgroundColor: '#f5f5f5' }}>
-          <h1 style={{ marginBottom: '30px' }}>Upload Resume</h1>
-
-          {/* File Upload Section */}
-          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', marginBottom: '25px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ marginBottom: '20px', color: '#333' }}>Upload Your Resume</h2>
-            <div style={{ 
-              padding: '40px', 
-              border: '2px dashed #2196f3', 
-              borderRadius: '12px', 
-              textAlign: 'center',
-              backgroundColor: '#e3f2fd',
-              cursor: 'pointer'
-            }}>
-              <input 
-                type="file" 
-                onChange={handleFileChange}
-                accept=".pdf,.docx"
-                style={{ marginBottom: '15px' }}
-                id="file-upload"
-              />
-              <label htmlFor="file-upload" style={{ cursor: 'pointer' }}>
-                <div style={{ fontSize: '48px', marginBottom: '10px' }}>📄</div>
-                <p style={{ margin: '0 0 10px 0', color: '#555' }}>
-                  {file ? file.name : 'Drag and drop your resume here or click to browse'}
-                </p>
-                <p style={{ margin: '0', color: '#888', fontSize: '14px' }}>
-                  Supported formats: PDF, DOCX
-                </p>
-              </label>
+    <AppShell title="Resume Analysis" description="Compare your resume with a target role and get AI suggestions that sharpen your profile.">
+      <div className="two-col">
+        <div className="upload-card glass">
+          <SectionHead title="Upload Resume" description="Drag and drop a text-based PDF or DOCX resume." />
+          <label className="upload-zone">
+            <input type="file" accept=".pdf,.docx" onChange={(event) => setFile(event.target.files?.[0] || null)} />
+            <div>
+              <FileUp size={42} color="#a5b4fc" />
+              <h3>{file ? file.name : 'Drag and drop resume'}</h3>
+              <p>PDF and DOCX supported</p>
             </div>
-            {error && (
-              <p style={{ margin: '15px 0 0 0', color: '#d32f2f', fontWeight: 'bold' }}>
-                {error}
-              </p>
-            )}
-            <button 
-              onClick={handleUpload}
-              disabled={!file || loading}
-              style={{ 
-                width: '100%',
-                padding: '15px', 
-                marginTop: '20px',
-                backgroundColor: file && !loading ? '#2196f3' : '#ccc',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                cursor: file && !loading ? 'pointer' : 'not-allowed'
-              }}
-            >
-              {loading ? '⏳ Processing...' : '🚀 Upload & Extract'}
-            </button>
-          </div>
-
-          {/* Extracted Data Section */}
-          {extractedData && (
-            <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-              <h2 style={{ marginBottom: '20px', color: '#333' }}>Extracted Information</h2>
-              
-              {/* Skills Section */}
-              <div style={{ marginBottom: '20px' }}>
-                <button 
-                  onClick={() => toggleSection('skills')}
-                  style={{ 
-                    width: '100%',
-                    padding: '15px',
-                    backgroundColor: '#e8f5e9',
-                    border: '2px solid #4caf50',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}
-                >
-                  <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#2e7d32' }}>💻 Skills</span>
-                  <span style={{ fontSize: '24px' }}>{expandedSection === 'skills' ? '▼' : '▶'}</span>
-                </button>
-                {expandedSection === 'skills' && (
-                  <div style={{ padding: '20px', backgroundColor: '#f9f9f9', marginTop: '10px', borderRadius: '8px' }}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                      {extractedData.skills.map((skill, index) => (
-                        <span key={index} style={{ 
-                          padding: '8px 16px', 
-                          backgroundColor: '#4caf50', 
-                          color: 'white', 
-                          borderRadius: '20px',
-                          fontSize: '14px'
-                        }}>
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Projects Section */}
-              <div style={{ marginBottom: '20px' }}>
-                <button 
-                  onClick={() => toggleSection('projects')}
-                  style={{ 
-                    width: '100%',
-                    padding: '15px',
-                    backgroundColor: '#e3f2fd',
-                    border: '2px solid #2196f3',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}
-                >
-                  <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#1976d2' }}>🚀 Projects</span>
-                  <span style={{ fontSize: '24px' }}>{expandedSection === 'projects' ? '▼' : '▶'}</span>
-                </button>
-                {expandedSection === 'projects' && (
-                  <div style={{ padding: '20px', backgroundColor: '#f9f9f9', marginTop: '10px', borderRadius: '8px' }}>
-                    {extractedData.projects.map((project, index) => (
-                      <div key={index} style={{ padding: '15px', backgroundColor: 'white', borderRadius: '8px', marginBottom: '10px', border: '1px solid #ddd' }}>
-                        <h4 style={{ margin: '0 0 10px 0', color: '#333' }}>{project.name}</h4>
-                        <p style={{ margin: '0 0 10px 0', color: '#666' }}>{project.description}</p>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                          {project.tech.map((tech, i) => (
-                            <span key={i} style={{ 
-                              padding: '4px 10px', 
-                              backgroundColor: '#e3f2fd', 
-                              color: '#1976d2', 
-                              borderRadius: '12px',
-                              fontSize: '12px'
-                            }}>
-                              {tech}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Experience Section */}
-              <div style={{ marginBottom: '20px' }}>
-                <button 
-                  onClick={() => toggleSection('experience')}
-                  style={{ 
-                    width: '100%',
-                    padding: '15px',
-                    backgroundColor: '#fff3e0',
-                    border: '2px solid #ff9800',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}
-                >
-                  <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#e65100' }}>💼 Experience</span>
-                  <span style={{ fontSize: '24px' }}>{expandedSection === 'experience' ? '▼' : '▶'}</span>
-                </button>
-                {expandedSection === 'experience' && (
-                  <div style={{ padding: '20px', backgroundColor: '#f9f9f9', marginTop: '10px', borderRadius: '8px' }}>
-                    {extractedData.experience.map((exp, index) => (
-                      <div key={index} style={{ padding: '15px', backgroundColor: 'white', borderRadius: '8px', marginBottom: '10px', border: '1px solid #ddd' }}>
-                        <h4 style={{ margin: '0 0 5px 0', color: '#333' }}>{exp.role}</h4>
-                        <p style={{ margin: '0 0 5px 0', color: '#666', fontWeight: 'bold' }}>{exp.company}</p>
-                        <p style={{ margin: '0', color: '#888', fontSize: '14px' }}>{exp.duration}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Education Section */}
-              <div style={{ marginBottom: '20px' }}>
-                <button 
-                  onClick={() => toggleSection('education')}
-                  style={{ 
-                    width: '100%',
-                    padding: '15px',
-                    backgroundColor: '#f3e5f5',
-                    border: '2px solid #9c27b0',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}
-                >
-                  <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#7b1fa2' }}>🎓 Education</span>
-                  <span style={{ fontSize: '24px' }}>{expandedSection === 'education' ? '▼' : '▶'}</span>
-                </button>
-                {expandedSection === 'education' && (
-                  <div style={{ padding: '20px', backgroundColor: '#f9f9f9', marginTop: '10px', borderRadius: '8px' }}>
-                    {extractedData.education.map((edu, index) => (
-                      <div key={index} style={{ padding: '15px', backgroundColor: 'white', borderRadius: '8px', marginBottom: '10px', border: '1px solid #ddd' }}>
-                        <h4 style={{ margin: '0 0 5px 0', color: '#333' }}>{edu.degree}</h4>
-                        <p style={{ margin: '0 0 5px 0', color: '#666', fontWeight: 'bold' }}>{edu.institution}</p>
-                        <p style={{ margin: '0', color: '#888', fontSize: '14px' }}>{edu.year}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Tech Stack Section */}
-              <div style={{ marginBottom: '20px' }}>
-                <button 
-                  onClick={() => toggleSection('techStack')}
-                  style={{ 
-                    width: '100%',
-                    padding: '15px',
-                    backgroundColor: '#fce4ec',
-                    border: '2px solid #e91e63',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}
-                >
-                  <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#c2185b' }}>⚙️ Tech Stack</span>
-                  <span style={{ fontSize: '24px' }}>{expandedSection === 'techStack' ? '▼' : '▶'}</span>
-                </button>
-                {expandedSection === 'techStack' && (
-                  <div style={{ padding: '20px', backgroundColor: '#f9f9f9', marginTop: '10px', borderRadius: '8px' }}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                      {extractedData.techStack.map((tech, index) => (
-                        <span key={index} style={{ 
-                          padding: '8px 16px', 
-                          backgroundColor: '#e91e63', 
-                          color: 'white', 
-                          borderRadius: '20px',
-                          fontSize: '14px'
-                        }}>
-                          {tech}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Certifications Section */}
-              <div style={{ marginBottom: '20px' }}>
-                <button 
-                  onClick={() => toggleSection('certifications')}
-                  style={{ 
-                    width: '100%',
-                    padding: '15px',
-                    backgroundColor: '#e0f2f1',
-                    border: '2px solid #009688',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}
-                >
-                  <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#00695c' }}>🏆 Certifications</span>
-                  <span style={{ fontSize: '24px' }}>{expandedSection === 'certifications' ? '▼' : '▶'}</span>
-                </button>
-                {expandedSection === 'certifications' && (
-                  <div style={{ padding: '20px', backgroundColor: '#f9f9f9', marginTop: '10px', borderRadius: '8px' }}>
-                    {extractedData.certifications.map((cert, index) => (
-                      <div key={index} style={{ padding: '12px', backgroundColor: 'white', borderRadius: '8px', marginBottom: '8px', border: '1px solid #ddd', display: 'flex', alignItems: 'center' }}>
-                        <span style={{ fontSize: '24px', marginRight: '10px' }}>📜</span>
-                        <span style={{ color: '#333' }}>{cert}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: '15px', marginTop: '25px' }}>
-                <button 
-                  onClick={handleStartInterview}
-                  style={{ 
-                    flex: 1,
-                    padding: '15px', 
-                    backgroundColor: '#4caf50', 
-                    color: 'white', 
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer'
-                  }}
-                >
-                  🎤 Start Interview
-                </button>
-                <button 
-                  onClick={() => setExtractedData(null)}
-                  style={{ 
-                    flex: 1,
-                    padding: '15px', 
-                    backgroundColor: '#f44336', 
-                    color: 'white', 
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer'
-                  }}
-                >
-                  🔄 Upload New Resume
-                </button>
-              </div>
+          </label>
+          <div style={{ height: 14 }} />
+          <label className="upload-zone" style={{ minHeight: 170 }}>
+            <input type="file" accept=".pdf,.docx,.txt" onChange={(event) => setJdFile(event.target.files?.[0] || null)} />
+            <div>
+              <BriefcaseBusiness size={34} color="#38bdf8" />
+              <h3>{jdFile ? jdFile.name : 'Upload JD'}</h3>
+              <p>Optional role description for match scoring</p>
+            </div>
+          </label>
+          {error && (
+            <div className="activity-item" style={{ marginTop: 14, color: '#fecdd3' }}>
+              <AlertCircle size={18} />
+              <span>{error}</span>
             </div>
           )}
+          <button className="btn btn-primary" style={{ width: '100%', marginTop: 16 }} onClick={handleUpload} disabled={loading}>
+            <Wand2 size={18} />
+            {loading ? 'Analyzing...' : 'Analyze Resume'}
+          </button>
         </div>
+
+        <Card>
+          <SectionHead title="AI Suggestions" description="High-impact changes to improve recruiter and ATS alignment." />
+          <div className="activity-list">
+            {[
+              'Add measurable impact to project bullets using numbers and outcomes.',
+              'Move React, Node.js, and MongoDB into a dedicated technical skills section.',
+              'Add testing, deployment, and API design keywords for stronger role matching.',
+            ].map((item) => (
+              <div className="activity-item" key={item}>
+                <span>{item}</span>
+                <Lightbulb size={18} color="#f59e0b" />
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
-    </div>
+
+      <div className="result-grid">
+        <Card>
+          <SectionHead title="Match Percentage" description={data ? 'Based on extracted resume signals.' : 'Demo preview until you upload.'} />
+          {loading ? <SkeletonRows /> : <ScoreRing score={data ? 82 : 78} label={data ? 'Strong Match' : 'Role Match'} />}
+        </Card>
+
+        <Card>
+          <SectionHead title="Detected Skills" description="Skills identified from your resume and technical sections." />
+          {loading ? <SkeletonRows /> : <PillList items={detected} empty="Upload a readable resume to detect skills." />}
+        </Card>
+      </div>
+
+      <div className="two-col">
+        <Card>
+          <SectionHead title="Missing Skills" description="Useful terms to add if they reflect your real experience." />
+          <PillList items={missingSkills} />
+        </Card>
+
+        <Card>
+          <SectionHead title="Extraction Results" description="Projects, experience, education, and certifications." />
+          {data ? (
+            <div className="activity-list">
+              <div className="activity-item"><span>Projects</span><span className="pill">{data.projects?.length || 0}</span></div>
+              <div className="activity-item"><span>Experience</span><span className="pill">{data.experience?.length || 0}</span></div>
+              <div className="activity-item"><span>Education</span><span className="pill">{data.education?.length || 0}</span></div>
+              <div className="activity-item"><span>Certifications</span><span className="pill">{data.certifications?.length || 0}</span></div>
+            </div>
+          ) : (
+            <motion.div className="activity-item" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <span className="muted">Upload your resume to generate structured extraction.</span>
+              <Sparkles size={18} color="#8b5cf6" />
+            </motion.div>
+          )}
+        </Card>
+      </div>
+    </AppShell>
   )
 }

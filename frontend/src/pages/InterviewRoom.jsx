@@ -1,96 +1,70 @@
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import Navbar from '../components/Navbar'
-import QuestionCard from '../components/QuestionCard'
-import Timer from '../components/Timer'
-import ScoreCard from '../components/ScoreCard'
-import { submitAnswer } from '../services/interview'
+import { Bot, Clock3, Mic, MonitorUp, Send, UserRound, Video } from 'lucide-react'
+import { AppShell, Card, SectionHead } from '../components/PremiumUI'
+
+const questions = [
+  'Walk me through a project where you improved performance.',
+  'How would you design an interview analytics dashboard?',
+  'What tradeoffs did you make in your latest full-stack project?',
+]
 
 export default function InterviewRoom() {
-  const [currentQuestion, setCurrentQuestion] = useState({
-    id: 1,
-    question: "Tell me about yourself and your experience.",
-    difficulty: "easy"
-  })
-  const [answer, setAnswer] = useState('')
-  const [score, setScore] = useState(null)
-  const [totalScore, setTotalScore] = useState(0)
-  const [questionCount, setQuestionCount] = useState(0)
-  const [isFinished, setIsFinished] = useState(false)
-  const navigate = useNavigate()
-
-  const handleSubmit = async () => {
-    const response = await submitAnswer({
-      question_id: currentQuestion.id,
-      answer: answer,
-      previous_score: totalScore
-    })
-
-    setScore(response.score)
-    setTotalScore(response.total_score)
-    setQuestionCount(prev => prev + 1)
-
-    if (response.next_question) {
-      setCurrentQuestion(response.next_question)
-      setAnswer('')
-    } else {
-      setIsFinished(true)
-    }
-  }
-
-  const handleFinish = () => {
-    navigate(`/report/${Date.now()}`)
-  }
-
-  if (isFinished) {
-    return (
-      <div>
-        <Navbar />
-        <div style={{ maxWidth: '600px', margin: '50px auto', padding: '20px' }}>
-          <h1>Interview Completed!</h1>
-          <ScoreCard score={totalScore} questionCount={questionCount} />
-          <button 
-            onClick={handleFinish}
-            style={{ padding: '10px 20px', cursor: 'pointer', marginTop: '20px' }}
-          >
-            View Full Report
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div>
-      <Navbar />
-      <div style={{ maxWidth: '800px', margin: '50px auto', padding: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h1>Interview Room</h1>
-          <Timer />
-        </div>
-        <QuestionCard question={currentQuestion} />
-        <div style={{ marginTop: '20px' }}>
-          <textarea
-            value={answer}
-            onChange={(e) => setAnswer(e.target.value)}
-            placeholder="Type your answer here..."
-            style={{ width: '100%', minHeight: '150px', padding: '10px', fontSize: '16px' }}
-          />
-          <button 
-            onClick={handleSubmit}
-            disabled={!answer.trim()}
-            style={{ padding: '10px 20px', cursor: answer.trim() ? 'pointer' : 'not-allowed', marginTop: '10px' }}
-          >
-            Submit Answer
-          </button>
-        </div>
-        {score !== null && (
-          <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#f0f0f0', borderRadius: '8px' }}>
-            <h3>Last Answer Score: {score}/100</h3>
-            <p>Total Score: {totalScore}</p>
+    <AppShell title="Mock Interview" description="A professional AI interview room with adaptive follow-up questions and live transcript capture.">
+      <div className="interview-layout">
+        <div className="video-panel panel-card glass">
+          <div className="ai-orb">
+            <div style={{ textAlign: 'center' }}>
+              <div className="brand-mark" style={{ width: 86, height: 86, borderRadius: 28, margin: '0 auto 18px' }}>
+                <Bot size={42} />
+              </div>
+              <h2 style={{ margin: 0 }}>AI Interviewer</h2>
+              <p className="muted">Listening for clarity, depth, confidence, and role fit.</p>
+            </div>
           </div>
-        )}
+          <div className="question-card">
+            <div className="stat-top">
+              <span className="pill"><Clock3 size={14} /> 12:48 remaining</span>
+              <span className="pill">Question 3 of 8</span>
+            </div>
+            <h2>Explain how you would structure a scalable resume analysis pipeline.</h2>
+            <p className="muted">Include parsing, scoring, error handling, and candidate feedback.</p>
+            <div className="actions" style={{ marginTop: 18 }}>
+              <button className="btn btn-primary"><Mic size={18} /> Answer</button>
+              <button className="btn btn-ghost"><Send size={18} /> Submit</button>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gap: 18 }}>
+          <Card>
+            <SectionHead title="Webcam Preview" />
+            <div className="webcam">
+              <Video size={34} color="#a5b4fc" />
+            </div>
+          </Card>
+
+          <Card>
+            <SectionHead title="Previous Questions" />
+            <div className="activity-list">
+              {questions.map((question) => (
+                <div className="activity-item" key={question}>
+                  <span>{question}</span>
+                  <MonitorUp size={17} color="#9ca3af" />
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card>
+            <SectionHead title="Transcript" />
+            <div className="transcript">
+              <div className="bubble"><Bot size={15} /> Tell me about the architecture choices in your project.</div>
+              <div className="bubble"><UserRound size={15} /> I separated parsing, scoring, and recommendation generation into services...</div>
+              <div className="bubble"><Bot size={15} /> Good. What would you do if PDF text extraction failed?</div>
+            </div>
+          </Card>
+        </div>
       </div>
-    </div>
+    </AppShell>
   )
 }
