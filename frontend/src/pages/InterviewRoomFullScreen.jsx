@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bot, Clock3, Mic, MicOff, Send, X, Volume2, AlertCircle, CheckCircle2, Video, VideoOff } from 'lucide-react'
-import { startInterview, submitAnswer, endInterview } from '../services/interview'
+import { startInterview, submitAnswer, endInterview, runDSACode, submitDSASolution } from '../services/interview'
 
 export default function InterviewRoomFullScreen() {
   const user = JSON.parse(localStorage.getItem('hiresense_user') || 'null')
@@ -27,6 +27,13 @@ export default function InterviewRoomFullScreen() {
   const [isStarting, setIsStarting] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [resumeContextCount, setResumeContextCount] = useState(0)
+  const [dsaQuestions, setDsaQuestions] = useState([])
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0)
+  const [selectedLanguage, setSelectedLanguage] = useState('python')
+  const [dsaCodes, setDsaCodes] = useState({}) // q_id -> user_code
+  const [dsaFeedbacks, setDsaFeedbacks] = useState({}) // q_id -> {score, feedback, is_correct, test_cases}
+  const [dsaRunning, setDsaRunning] = useState(false)
+  const [dsaSubmitting, setDsaSubmitting] = useState(false)
   
   const recognitionRef = useRef(null)
   const videoRef = useRef(null)
@@ -136,8 +143,19 @@ export default function InterviewRoomFullScreen() {
       })
       
       setInterviewId(response.interview_id)
-      setCurrentQuestion(response.question)
-      setTimeRemaining(response.duration_minutes * 60)
+      if (type === 'dsa') {
+        setDsaQuestions(response.dsa_questions || [])
+        setActiveQuestionIndex(0)
+        const stubs = {}
+        response.dsa_questions?.forEach(q => {
+          stubs[q.id] = q.code_stubs?.python || ''
+        })
+        setDsaCodes(stubs)
+        setTimeRemaining(3600) // Exactly 1 hour (3600 seconds)
+      } else {
+        setCurrentQuestion(response.question)
+        setTimeRemaining(response.duration_minutes * 60)
+      }
     } catch (error) {
       console.error('Failed to start interview:', error)
       alert(error.response?.data?.detail || 'Failed to start interview. Please try again.')
@@ -344,6 +362,302 @@ export default function InterviewRoomFullScreen() {
             </div>
             <p className="redirecting">Redirecting to dashboard...</p>
           </motion.div>
+        </div>
+      </div>
+    )
+  }
+
+  if (interviewType === 'dsa' && !showTypeSelector && dsaQuestions.length > 0) {
+    const activeQ = dsaQuestions[activeQuestionIndex]
+    const activeCode = dsaCodes[activeQ.id] || ''
+    const activeFeedback = dsaFeedbacks[activeQ.id] || null
+
+    const handleLanguageChange = (lang) => {
+      setSelectedLanguage(lang)
+      setDsaCodes(prev => ({
+        ...prev,
+        [activeQ.id]: activeQ.code_stubs?.[lang] || ''
+      }))
+    }
+
+    const runCodeHandler = async () => {
+      if (dsaRunning) return
+      setDsaRunning(true)
+      try {
+        const response = await runDSACode({
+          interview_id: interviewId,
+          question_id: activeQ.id,
+          language: selectedLanguage,
+          code: activeCode
+        })
+        
+        const updatedQs = [...dsaQuestions]
+        updatedQs[activeQuestionIndex].test_cases = response.test_cases
+        setDsaQuestions(updatedQs)
+      } catch (err) {
+        alert(err.response?.data?.detail || 'Failed to run test cases. Please try again.')
+      } finally {
+        setDsaRunning(false)
+      }
+    }
+
+    const submitCodeHandler = async () => {
+      if (dsaSubmitting) return
+      setDsaSubmitting(true)
+      try {
+        const response = await submitDSASolution({
+          interview_id: interviewId,
+          question_id: activeQ.id,
+          language: selectedLanguage,
+          code: activeCode
+        })
+        
+        setDsaFeedbacks(prev => ({
+          ...prev,
+          [activeQ.id]: response
+        }))
+
+        const updatedQs = [...dsaQuestions]
+        updatedQs[activeQuestionIndex].status = response.is_correct ? 'passed' : 'failed'
+        updatedQs[activeQuestionIndex].test_cases = response.test_cases
+        setDsaQuestions(updatedQs)
+        setTotalScore(response.total_score)
+
+        if (response.interview_ended) {
+          setInterviewEnded(true)
+          setEndReason(response.end_reason)
+          setTimeout(() => exitFullscreen(), 4000)
+        }
+      } catch (err) {
+        alert(err.response?.data?.detail || 'Failed to submit solution. Please try again.')
+      } finally {
+        setDsaSubmitting(false)
+      }
+    }
+
+    return (
+      <div className="fullscreen-interview dsa-arena" style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#090d16', color: '#f3f4f6', fontFamily: 'system-ui, sans-serif' }}>
+        {/* Header */}
+        <header className="interview-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', background: '#0e1726', borderBottom: '1px solid #1e293b' }}>
+          <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <span className="interview-type-badge" style={{ background: '#3b82f6', color: '#fff', padding: '4px 10px', borderRadius: 4, fontSize: 13, fontWeight: 'bold' }}>DSA Coding Arena</span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {dsaQuestions.map((q, idx) => {
+                const isPassed = q.status === 'passed'
+                const isFailed = q.status === 'failed'
+                const borderTone = idx === activeQuestionIndex ? '#3b82f6' : '#334155'
+                const bgTone = idx === activeQuestionIndex ? '#1e3a8a' : isPassed ? '#065f46' : isFailed ? '#7f1d1d' : '#1e293b'
+                const checkColor = isPassed ? '#34d399' : isFailed ? '#f87171' : '#9ca3af'
+                
+                return (
+                  <button
+                    key={q.id}
+                    onClick={() => setActiveQuestionIndex(idx)}
+                    style={{
+                      border: `1px solid ${borderTone}`,
+                      background: bgTone,
+                      color: '#fff',
+                      padding: '6px 12px',
+                      borderRadius: 6,
+                      fontSize: 13,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontWeight: '500',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: checkColor }} />
+                    Q{idx + 1}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          <div className="header-center" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 18, fontWeight: 'bold', color: timeRemaining < 120 ? '#ef4444' : '#fff' }}>
+            <Clock3 size={20} />
+            <span>{formatTime(timeRemaining)}</span>
+          </div>
+          <div className="header-right">
+            <button className="end-btn" onClick={() => handleEndInterview('User ended DSA session')} style={{ background: '#b91c1c', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <X size={18} />
+              End Practice
+            </button>
+          </div>
+        </header>
+
+        {/* Main Coding Area */}
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          {/* Left Panel: Description */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: 24, borderRight: '1px solid #1e293b', background: '#0b111e' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <span className="difficulty-badge" style={{ background: activeQ.difficulty === 'easy' ? '#065f46' : activeQ.difficulty === 'medium' ? '#92400e' : '#7f1d1d', color: '#fff', padding: '2px 8px', borderRadius: 4, fontSize: 12, textTransform: 'uppercase', fontWeight: 'bold' }}>{activeQ.difficulty}</span>
+              <span style={{ fontSize: 13, color: '#9ca3af' }}>Question {activeQuestionIndex + 1} of 5</span>
+            </div>
+            <h1 style={{ fontSize: 24, margin: '0 0 16px', color: '#fff' }}>{activeQ.title}</h1>
+            <div style={{ color: '#d1d5db', lineHeight: '1.6', fontSize: 15, whiteSpace: 'pre-wrap' }}>
+              {activeQ.problem_statement}
+            </div>
+          </div>
+
+          {/* Right Panel: Editor & Output */}
+          <div style={{ flex: 1.2, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#090d16' }}>
+            {/* Editor Toolbar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 18px', background: '#0e1726', borderBottom: '1px solid #1e293b' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 13, color: '#9ca3af', fontWeight: '500' }}>Select Language:</span>
+                <select
+                  value={selectedLanguage}
+                  onChange={(e) => handleLanguageChange(e.target.value)}
+                  style={{
+                    background: '#1e293b',
+                    color: '#fff',
+                    border: '1px solid #334155',
+                    padding: '4px 10px',
+                    borderRadius: 4,
+                    fontSize: 13,
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="python">Python 3</option>
+                  <option value="javascript">JavaScript (ES6)</option>
+                  <option value="cpp">C++ (GCC 17)</option>
+                  <option value="java">Java (JDK 17)</option>
+                </select>
+              </div>
+              <span style={{ fontSize: 12, color: '#3b82f6', fontWeight: 'bold' }}>Monokai Dark Theme</span>
+            </div>
+
+            {/* Code Textarea */}
+            <div style={{ flex: 1, display: 'flex', overflow: 'hidden', background: '#0d131f' }}>
+              <div style={{ width: 45, background: '#080c14', padding: '16px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', color: '#475569', fontFamily: 'Courier New, monospace', fontSize: 14, userSelect: 'none', borderRight: '1px solid #1e293b' }}>
+                {Array.from({ length: 30 }).map((_, i) => (
+                  <div key={i} style={{ height: 21 }}>{i + 1}</div>
+                ))}
+              </div>
+              <textarea
+                value={activeCode}
+                onChange={(e) => setDsaCodes(prev => ({ ...prev, [activeQ.id]: e.target.value }))}
+                style={{
+                  flex: 1,
+                  background: 'transparent',
+                  color: '#a7f3d0',
+                  border: 'none',
+                  outline: 'none',
+                  padding: '16px 12px',
+                  fontFamily: 'Consolas, Monaco, Courier New, monospace',
+                  fontSize: 14,
+                  lineHeight: '21px',
+                  resize: 'none',
+                  whiteSpace: 'pre',
+                  tabSize: 4
+                }}
+                placeholder="Type your DSA solution here..."
+              />
+            </div>
+
+            {/* Toolbar Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, padding: '12px 18px', background: '#0e1726', borderTop: '1px solid #1e293b' }}>
+              <button
+                onClick={runCodeHandler}
+                disabled={dsaRunning || dsaSubmitting}
+                style={{
+                  background: '#334155',
+                  color: '#fff',
+                  border: '1px solid #475569',
+                  padding: '8px 16px',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  opacity: dsaRunning || dsaSubmitting ? 0.6 : 1
+                }}
+              >
+                <Bot size={16} />
+                {dsaRunning ? 'Running...' : 'Run Code'}
+              </button>
+              <button
+                onClick={submitCodeHandler}
+                disabled={dsaSubmitting || dsaRunning}
+                style={{
+                  background: '#2563eb',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '8px 18px',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  opacity: dsaSubmitting || dsaRunning ? 0.6 : 1
+                }}
+              >
+                <Send size={16} />
+                {dsaSubmitting ? 'Evaluating...' : 'Submit Solution'}
+              </button>
+            </div>
+
+            {/* Outputs & AI Reviews Panel */}
+            <div style={{ height: 200, display: 'flex', flexDirection: 'column', background: '#0b111e', borderTop: '1px solid #1e293b', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', background: '#0d1624', borderBottom: '1px solid #1e293b', padding: '0 12px' }}>
+                <span style={{ borderBottom: '2px solid #3b82f6', color: '#fff', padding: '8px 12px', fontSize: 13, fontWeight: 'bold' }}>Execution Panel</span>
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+                {/* AI feedback view */}
+                {activeFeedback && (
+                  <div style={{ background: activeFeedback.is_correct ? '#064e3b' : '#7f1d1d', border: `1px solid ${activeFeedback.is_correct ? '#059669' : '#b91c1c'}`, padding: 12, borderRadius: 6, marginBottom: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <strong style={{ color: '#fff' }}>AI Critique: {activeFeedback.score}% Correctness</strong>
+                      <span style={{ fontSize: 12, color: activeFeedback.is_correct ? '#34d399' : '#f87171', fontWeight: 'bold' }}>{activeFeedback.is_correct ? 'PASSED' : 'RETRY REQUIRED'}</span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 13, color: '#e5e7eb' }}>{activeFeedback.feedback}</p>
+                  </div>
+                )}
+
+                {/* Test case stubs */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {activeQ.test_cases.map((tc) => {
+                    const isRan = tc.passed !== null
+                    const tcPassed = tc.passed === true
+                    
+                    return (
+                      <div key={tc.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#111827', padding: '8px 12px', borderRadius: 6, border: '1px solid #1f2937' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <span style={{
+                            background: isRan ? (tcPassed ? '#065f46' : '#7f1d1d') : '#374151',
+                            color: '#fff',
+                            width: 18,
+                            height: 18,
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 10,
+                            fontWeight: 'bold'
+                          }}>
+                            {isRan ? (tcPassed ? '✓' : '✗') : '?'}
+                          </span>
+                          <span style={{ fontSize: 13, color: '#fff', fontWeight: '500' }}>Test Case:</span>
+                          <span style={{ fontSize: 13, color: '#9ca3af', fontFamily: 'Courier New' }}>Input: `{tc.input}`</span>
+                          <span style={{ fontSize: 13, color: '#9ca3af', fontFamily: 'Courier New' }}>Expected: `{tc.expected_output}`</span>
+                        </div>
+                        {isRan && (
+                          <span style={{ fontSize: 12, color: tcPassed ? '#34d399' : '#f87171', fontFamily: 'Courier New' }}>
+                            Actual: `{tc.actual_output}`
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )

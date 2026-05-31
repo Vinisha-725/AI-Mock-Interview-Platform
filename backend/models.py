@@ -45,6 +45,28 @@ class Question(BaseModel):
     source: str = "local"
 
 
+class DSATestCase(BaseModel):
+    id: str
+    input: str
+    expected_output: str
+    actual_output: Optional[str] = None
+    passed: Optional[bool] = None
+
+
+class DSAQuestion(BaseModel):
+    id: str
+    title: str
+    problem_statement: str
+    difficulty: str
+    code_stubs: Dict[str, str]  # language -> starter stub code
+    test_cases: List[DSATestCase]
+    user_code: Optional[str] = None
+    selected_language: Optional[str] = None
+    status: str = "unsolved"  # "unsolved", "passed", "failed"
+    feedback: Optional[str] = None
+    score: Optional[int] = None
+
+
 class InterviewStartRequest(BaseModel):
     skills: List[str]
     projects: List[Project]
@@ -54,9 +76,11 @@ class InterviewStartRequest(BaseModel):
 
 class InterviewStartResponse(BaseModel):
     interview_id: str
-    question: Question
+    question: Optional[Question] = None
     duration_minutes: int
     start_time: str
+    dsa_questions: Optional[List[DSAQuestion]] = None
+
 
 
 class AnswerSubmission(BaseModel):
@@ -92,6 +116,8 @@ class InterviewSession(BaseModel):
     consecutive_wrong_answers: int
     total_score: int
     status: str
+    dsa_questions: Optional[List[DSAQuestion]] = None
+
 
 
 class SessionHistory(BaseModel):
@@ -110,3 +136,17 @@ class Report(BaseModel):
     weaknesses: List[str]
     question_count: int
     total_score: int
+
+class DSARunRequest(BaseModel):
+    interview_id: str
+    question_id: str
+    language: str
+    code: str
+
+
+class DSASubmissionRequest(BaseModel):
+    interview_id: str
+    question_id: str
+    language: str
+    code: str
+

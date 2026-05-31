@@ -34,3 +34,13 @@ export const endInterview = async (interviewId) => {
   const response = await api.post(`/interview/end/${interviewId}`)
   return response.data
 }
+
+export const runDSACode = async (data) => {
+  const response = await api.post('/interview/dsa/run', data)
+  return response.data
+}
+
+export const submitDSASolution = async (data) => {
+  const response = await api.post('/interview/dsa/submit', data)
+  return response.data
+}
