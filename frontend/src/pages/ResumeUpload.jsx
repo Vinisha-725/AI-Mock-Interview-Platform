@@ -57,17 +57,18 @@ const getMissingSkills = (resumeData, jdText) => {
     .filter(Boolean)
   const jd = normalize(jdText || '')
 
+  // Only show missing skills if we have a job description to compare against
   if (jd.length > 20) {
-    return commonRoleSkills
-      .filter((skill) => jd.includes(skill) && !skills.some((detected) => detected.includes(skill) || skill.includes(detected)))
+    // Extract skills mentioned in JD that are not in resume
+    const jdSkills = commonRoleSkills.filter((skill) => jd.includes(skill))
+    return jdSkills
+      .filter((skill) => !skills.some((detected) => detected.includes(skill) || skill.includes(detected)))
       .map((skill) => skill.replace(/\b\w/g, (char) => char.toUpperCase()))
       .slice(0, 8)
   }
 
-  return commonRoleSkills
-    .filter((skill) => !skills.some((detected) => detected.includes(skill) || skill.includes(detected)))
-    .slice(0, 5)
-    .map((skill) => skill.replace(/\b\w/g, (char) => char.toUpperCase()))
+  // Without JD, don't show missing skills - we don't know what's relevant
+  return []
 }
 
 const generateSuggestions = (resumeData, missingSkills, matchScore, hasJdText) => {
@@ -79,7 +80,7 @@ const generateSuggestions = (resumeData, missingSkills, matchScore, hasJdText) =
     suggestions.push('Paste the job description to calculate a more accurate resume-to-role match.')
   }
 
-  if (missingSkills.length) {
+  if (missingSkills.length && hasJdText) {
     suggestions.push(`Consider adding relevant experience with ${missingSkills.slice(0, 3).join(', ')} if you have it.`)
   }
 
@@ -95,12 +96,16 @@ const generateSuggestions = (resumeData, missingSkills, matchScore, hasJdText) =
     suggestions.push('Group skills into categories like Languages, Frameworks, Databases, and Tools for easier scanning.')
   }
 
-  if (matchScore < 60) {
+  if (matchScore < 60 && hasJdText) {
     suggestions.push('Tailor your resume keywords to the target role before applying.')
   }
 
   if (!suggestions.length) {
-    suggestions.push('Your resume has a strong skills section. Add quantified impact to make it more recruiter-ready.')
+    if (hasJdText) {
+      suggestions.push('Your resume looks good for this role. Consider adding more quantified achievements to stand out.')
+    } else {
+      suggestions.push('Your resume has been parsed successfully. Add a job description to get personalized suggestions.')
+    }
   }
 
   return suggestions
@@ -258,7 +263,22 @@ export default function ResumeUpload() {
 
         <Card>
           <SectionHead title="Detected Skills" description="Skills identified from your resume and technical sections." />
-          {loading ? <SkeletonRows /> : <PillList className="scrollable-skills" items={data?.skills || []} empty="Upload a readable resume to detect skills." />}
+          {loading ? <SkeletonRows /> : (
+            <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+              {data?.skills?.length > 0 || data?.techStack?.length > 0 ? (
+                <PillList 
+                  className="scrollable-skills" 
+                  items={[...(data?.skills || []), ...(data?.techStack || [])]} 
+                  empty="Upload a readable resume to detect skills." 
+                />
+              ) : (
+                <div className="activity-item">
+                  <span className="muted">No skills detected from resume.</span>
+                  <Sparkles size={18} color="#8b5cf6" />
+                </div>
+              )}
+            </div>
+          )}
         </Card>
       </div>
 
@@ -278,11 +298,59 @@ export default function ResumeUpload() {
         <Card>
           <SectionHead title="Extraction Results" description="Projects, experience, education, and certifications." />
           {data ? (
-            <div className="activity-list">
-              <div className="activity-item"><span>Projects</span><span className="pill">{data.projects?.length || 0}</span></div>
-              <div className="activity-item"><span>Experience</span><span className="pill">{data.experience?.length || 0}</span></div>
-              <div className="activity-item"><span>Education</span><span className="pill">{data.education?.length || 0}</span></div>
-              <div className="activity-item"><span>Certifications</span><span className="pill">{data.certifications?.length || 0}</span></div>
+            <div className="activity-list" style={{ maxHeight: 400, overflowY: 'auto' }}>
+              {data.projects?.length > 0 && (
+                <>
+                  <div style={{ fontWeight: 600, marginTop: 12, marginBottom: 8, color: '#a5b4fc' }}>Projects</div>
+                  {data.projects.map((project, idx) => (
+                    <div className="activity-item" key={idx} style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                      <span style={{ fontWeight: 500 }}>{project.name || project.title || 'Project'}</span>
+                      {project.description && <span className="muted" style={{ fontSize: 13, marginTop: 4 }}>{project.description}</span>}
+                      {project.tech_stack && <span className="pill" style={{ marginTop: 6, fontSize: 12 }}>{Array.isArray(project.tech_stack) ? project.tech_stack.join(', ') : project.tech_stack}</span>}
+                    </div>
+                  ))}
+                </>
+              )}
+              {data.experience?.length > 0 && (
+                <>
+                  <div style={{ fontWeight: 600, marginTop: 12, marginBottom: 8, color: '#a5b4fc' }}>Experience</div>
+                  {data.experience.map((exp, idx) => (
+                    <div className="activity-item" key={idx} style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                      <span style={{ fontWeight: 500 }}>{exp.company || exp.organization || 'Company'}</span>
+                      {exp.role && <span className="muted" style={{ fontSize: 13 }}>{exp.role}</span>}
+                      {exp.duration && <span className="pill" style={{ marginTop: 6, fontSize: 12 }}>{exp.duration}</span>}
+                    </div>
+                  ))}
+                </>
+              )}
+              {data.education?.length > 0 && (
+                <>
+                  <div style={{ fontWeight: 600, marginTop: 12, marginBottom: 8, color: '#a5b4fc' }}>Education</div>
+                  {data.education.map((edu, idx) => (
+                    <div className="activity-item" key={idx} style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                      <span style={{ fontWeight: 500 }}>{edu.institution || edu.school || 'Institution'}</span>
+                      {edu.degree && <span className="muted" style={{ fontSize: 13 }}>{edu.degree}</span>}
+                      {edu.year && <span className="pill" style={{ marginTop: 6, fontSize: 12 }}>{edu.year}</span>}
+                    </div>
+                  ))}
+                </>
+              )}
+              {data.certifications?.length > 0 && (
+                <>
+                  <div style={{ fontWeight: 600, marginTop: 12, marginBottom: 8, color: '#a5b4fc' }}>Certifications</div>
+                  {data.certifications.map((cert, idx) => (
+                    <div className="activity-item" key={idx}>
+                      <span>{cert.name || cert.title || cert}</span>
+                    </div>
+                  ))}
+                </>
+              )}
+              {!data.projects?.length && !data.experience?.length && !data.education?.length && !data.certifications?.length && (
+                <div className="activity-item">
+                  <span className="muted">No detailed information extracted from resume.</span>
+                  <Sparkles size={18} color="#8b5cf6" />
+                </div>
+              )}
             </div>
           ) : (
             <motion.div className="activity-item" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>

@@ -155,16 +155,33 @@ class ResumeParser:
             "Linux", "Unix", "Bash", "Shell", "PowerShell", "CI/CD", "Agile", "Scrum", "Kanban", "DevOps", "TDD", "BDD",
             "Machine Learning", "Deep Learning", "AI", "Artificial Intelligence", "Data Science", "Big Data", "Blockchain", "MERN", "MERN Stack", "JWT"
         ]
-        
+
         found_skills = self.extract_skills_from_section(text)
-        
+
+        # Search for skills in entire text with more lenient matching
+        text_lower = text.lower()
         for skill in skill_keywords:
-            if self.contains_keyword(text, skill):
+            skill_lower = skill.lower()
+            # Check if skill appears as a whole word or with common separators
+            if skill_lower in text_lower:
                 found_skills.append(skill)
-        
+            # Also check for partial matches for multi-word skills
+            elif ' ' in skill_lower:
+                parts = skill_lower.split()
+                if all(part in text_lower for part in parts):
+                    found_skills.append(skill)
+
+        # Also extract any capitalized words that might be skills (aggressive fallback)
+        words = re.findall(r'\b[A-Z][a-zA-Z+#.]*\b', text)
+        common_words = {"The", "This", "That", "These", "Those", "Experience", "Education", "Skills", "Projects", "Summary", "Objective", "Profile", "Contact", "Company", "University", "College", "School", "Work", "Professional", "Personal", "Key", "Main", "Major", "Minor", "Bachelor", "Master", "PhD", "Doctor", "Mr", "Mrs", "Ms", "Dr", "Prof", "Inc", "Ltd", "LLC", "Corp", "Co", "Jan", "Feb", "Mar", "Apr", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"}
+        for word in words:
+            if word not in common_words and len(word) >= 2 and len(word) <= 30:
+                if word not in found_skills:
+                    found_skills.append(word)
+
         found_skills = self.dedupe(found_skills)
         print(f"Found {len(found_skills)} skills: {found_skills}")
-        return found_skills
+        return found_skills[:50]  # Return up to 50 skills
 
     def extract_projects(self, text: str) -> List[Project]:
         projects = []
