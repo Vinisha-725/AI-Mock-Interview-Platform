@@ -1,5 +1,6 @@
 import json
 import os
+import random
 import re
 import urllib.error
 import urllib.request
@@ -632,260 +633,366 @@ class OpenAIService:
         }
 
     def generate_dsa_questions(self, skills: List[str]) -> List[DSAQuestion]:
-        two_sum_desc = (
-            "Given an array of integers `nums` and an integer `target`, return indices of the two numbers "
-            "such that they add up to `target`.\n\nYou may assume that each input would have exactly one solution, "
-            "and you may not use the same element twice.\n\nYou can return the answer in any order.\n\n"
-            "**Example 1:**\n"
-            "* Input: `nums = [2,7,11,15]`, `target = 9`\n"
-            "* Output: `[0,1]`\n"
-            "* Explanation: Because `nums[0] + nums[1] == 9`, we return `[0, 1]`."
-        )
-        valid_paren_desc = (
-            "Given a string `s` containing just the characters `'('`, `')'`, `'{'`, `'}'`, `'['` and `']'`, "
-            "determine if the input string is valid.\n\nAn input string is valid if:\n"
-            "1. Open brackets must be closed by the same type of brackets.\n"
-            "2. Open brackets must be closed in the correct order.\n"
-            "3. Every close bracket has a corresponding open bracket of the same type.\n\n"
-            "**Example 1:**\n"
-            "* Input: `s = \"()\"`\n"
-            "* Output: `true`"
-        )
-        reverse_string_desc = (
-            "Write a function that reverses a string. The input string is given as an array of characters `s`.\n\n"
-            "You must do this by modifying the input array in-place with O(1) extra memory.\n\n"
-            "**Example 1:**\n"
-            "* Input: `s = [\"h\",\"e\",\"l\",\"l\",\"o\"]`\n"
-            "* Output: `[\"o\",\"l\",\"l\",\"e\",\"h\"]`"
-        )
-        merge_sorted_desc = (
-            "You are given two integer arrays `nums1` and `nums2`, sorted in non-decreasing order, "
-            "and two integers `m` and `n`, representing the number of elements in `nums1` and `nums2` respectively.\n\n"
-            "Merge `nums1` and `nums2` into a single array sorted in non-decreasing order.\n\n"
-            "The result should not be returned by the function, but instead be stored inside the array `nums1` directly.\n\n"
-            "**Example 1:**\n"
-            "* Input: `nums1 = [1,2,3,0,0,0]`, `m = 3`, `nums2 = [2,5,6]`, `n = 3`\n"
-            "* Output: `[1,2,2,3,5,6]`"
-        )
-        binary_search_desc = (
-            "Given an array of integers `nums` which is sorted in ascending order, and an integer `target`, "
-            "write a function to search `target` in `nums`. If `target` exists, then return its index. "
-            "Otherwise, return `-1`.\n\nYou must write an algorithm with `O(log n)` runtime complexity.\n\n"
-            "**Example 1:**\n"
-            "* Input: `nums = [-1,0,3,5,9,12]`, `target = 9`\n"
-            "* Output: `4`"
+        # Easy pool questions
+        q_two_sum = DSAQuestion(
+            id="dsa_q_twosum",
+            title="Two Sum",
+            problem_statement=(
+                "Given an array of integers `nums` and an integer `target`, return indices of the two numbers "
+                "such that they add up to `target`.\n\nYou may assume that each input would have exactly one solution, "
+                "and you may not use the same element twice.\n\nYou can return the answer in any order.\n\n"
+                "**Example 1:**\n"
+                "* Input: `nums = [2,7,11,15]`, `target = 9`\n"
+                "* Output: `[0,1]`"
+            ),
+            difficulty="easy",
+            code_stubs={
+                "python": "def two_sum(nums, target):\n    # Write your Python code here\n    pass",
+                "javascript": "function twoSum(nums, target) {\n    return [];\n}",
+                "java": "class Solution {\n    public int[] twoSum(int[] nums, int target) {\n        return new int[0];\n    }\n}",
+                "cpp": "class Solution {\npublic:\n    vector<int> twoSum(vector<int>& nums, int target) {\n        return {};\n    }\n};"
+            },
+            test_cases=[
+                DSATestCase(id="q1_tc1", input="[2,7,11,15], 9", expected_output="[0, 1]"),
+                DSATestCase(id="q1_tc2", input="[3,2,4], 6", expected_output="[1, 2]"),
+                DSATestCase(id="q1_tc3", input="[3,3], 6", expected_output="[0, 1]")
+            ]
         )
 
-        dsa_bank = [
-            DSAQuestion(
-                id="dsa_q1",
-                title="Two Sum",
-                problem_statement=two_sum_desc,
-                difficulty="easy",
-                code_stubs={
-                    "python": "def two_sum(nums, target):\n    # Write your Python code here\n    pass",
-                    "javascript": "function twoSum(nums, target) {\n    // Write your JavaScript code here\n    return [];\n}",
-                    "java": "class Solution {\n    public int[] twoSum(int[] nums, int target) {\n        // Write your Java code here\n        return new int[0];\n    }\n}",
-                    "cpp": "class Solution {\npublic:\n    vector<int> twoSum(vector<int>& nums, int target) {\n        // Write your C++ code here\n        return {};\n    }\n};"
-                },
-                test_cases=[
-                    DSATestCase(id="q1_tc1", input="[2,7,11,15], 9", expected_output="[0, 1]"),
-                    DSATestCase(id="q1_tc2", input="[3,2,4], 6", expected_output="[1, 2]"),
-                    DSATestCase(id="q1_tc3", input="[3,3], 6", expected_output="[0, 1]")
-                ]
+        q_valid_paren = DSAQuestion(
+            id="dsa_q_validparen",
+            title="Valid Parentheses",
+            problem_statement=(
+                "Given a string `s` containing just the characters `'('`, `')'`, `'{'`, `'}'`, `'['` and `']'`, "
+                "determine if the input string is valid.\n\nAn input string is valid if:\n"
+                "1. Open brackets must be closed by the same type of brackets.\n"
+                "2. Open brackets must be closed in the correct order."
             ),
-            DSAQuestion(
-                id="dsa_q2",
-                title="Valid Parentheses",
-                problem_statement=valid_paren_desc,
-                difficulty="easy",
-                code_stubs={
-                    "python": "def is_valid(s):\n    # Write your Python code here\n    pass",
-                    "javascript": "function isValid(s) {\n    // Write your JavaScript code here\n    return false;\n}",
-                    "java": "class Solution {\n    public boolean isValid(String s) {\n        // Write your Java code here\n        return false;\n    }\n}",
-                    "cpp": "class Solution {\npublic:\n    bool isValid(string s) {\n        // Write your C++ code here\n        return false;\n    }\n};"
-                },
-                test_cases=[
-                    DSATestCase(id="q2_tc1", input="'()'", expected_output="true"),
-                    DSATestCase(id="q2_tc2", input="'()[]{}'", expected_output="true"),
-                    DSATestCase(id="q2_tc3", input="'(]'", expected_output="false")
-                ]
+            difficulty="easy",
+            code_stubs={
+                "python": "def is_valid(s):\n    # Write your Python code here\n    pass",
+                "javascript": "function isValid(s) {\n    return false;\n}",
+                "java": "class Solution {\n    public boolean isValid(String s) {\n        return false;\n    }\n}",
+                "cpp": "class Solution {\npublic:\n    bool isValid(string s) {\n        return false;\n    }\n};"
+            },
+            test_cases=[
+                DSATestCase(id="q2_tc1", input="'()'", expected_output="true"),
+                DSATestCase(id="q2_tc2", input="'()[]{}'", expected_output="true"),
+                DSATestCase(id="q2_tc3", input="'(]'", expected_output="false")
+            ]
+        )
+
+        q_reverse_str = DSAQuestion(
+            id="dsa_q_reversestr",
+            title="Reverse String",
+            problem_statement=(
+                "Write a function that reverses a string. The input string is given as an array of characters `s`.\n\n"
+                "You must do this by modifying the input array in-place with O(1) extra memory.\n\n"
+                "**Example 1:**\n"
+                "* Input: `s = [\"h\",\"e\",\"l\",\"l\",\"o\"]`\n"
+                "* Output: `[\"o\",\"l\",\"l\",\"e\",\"h\"]`"
             ),
-            DSAQuestion(
-                id="dsa_q3",
-                title="Reverse String",
-                problem_statement=reverse_string_desc,
-                difficulty="easy",
-                code_stubs={
-                    "python": "def reverse_string(s):\n    # Write your Python code here (modify s in-place)\n    pass",
-                    "javascript": "function reverseString(s) {\n    // Write your JavaScript code here\n    \n}",
-                    "java": "class Solution {\n    public void reverseString(char[] s) {\n        // Write your Java code here\n        \n    }\n}",
-                    "cpp": "class Solution {\npublic:\n    void reverseString(vector<char>& s) {\n        // Write your C++ code here\n        \n    }\n};"
-                },
-                test_cases=[
-                    DSATestCase(id="q3_tc1", input="['h','e','l','l','o']", expected_output="['o', 'l', 'l', 'e', 'h']"),
-                    DSATestCase(id="q3_tc2", input="['H','a','n','n','a','h']", expected_output="['h', 'a', 'n', 'n', 'a', 'H']")
-                ]
+            difficulty="easy",
+            code_stubs={
+                "python": "def reverse_string(s):\n    # Write your Python code here (modify s in-place)\n    pass",
+                "javascript": "function reverseString(s) {\n    \n}",
+                "java": "class Solution {\n    public void reverseString(char[] s) {\n        \n    }\n}",
+                "cpp": "class Solution {\npublic:\n    void reverseString(vector<char>& s) {\n        \n    }\n};"
+            },
+            test_cases=[
+                DSATestCase(id="q3_tc1", input="['h','e','l','l','o']", expected_output="['o', 'l', 'l', 'e', 'h']"),
+                DSATestCase(id="q3_tc2", input="['H','a','n','n','a','h']", expected_output="['h', 'a', 'n', 'n', 'a', 'H']")
+            ]
+        )
+
+        q_merge_sorted = DSAQuestion(
+            id="dsa_q_mergesorted",
+            title="Merge Sorted Array",
+            problem_statement=(
+                "Merge `nums1` and `nums2` into a single array sorted in non-decreasing order.\n\n"
+                "The result should not be returned by the function, but instead be stored inside the array `nums1` directly."
             ),
-            DSAQuestion(
-                id="dsa_q4",
-                title="Merge Sorted Array",
-                problem_statement=merge_sorted_desc,
-                difficulty="easy",
-                code_stubs={
-                    "python": "def merge(nums1, m, nums2, n):\n    # Write your Python code here (modify nums1 in-place)\n    pass",
-                    "javascript": "function merge(nums1, m, nums2, n) {\n    // Write your JavaScript code here\n    \n}",
-                    "java": "class Solution {\n    public void merge(int[] nums1, int m, int[] nums2, int n) {\n        // Write your Java code here\n        \n    }\n}",
-                    "cpp": "class Solution {\npublic:\n    void merge(vector<int>& nums1, int m, vector<int>& nums2, int n) {\n        // Write your C++ code here\n        \n    }\n};"
-                },
-                test_cases=[
-                    DSATestCase(id="q4_tc1", input="[1,2,3,0,0,0], 3, [2,5,6], 3", expected_output="[1, 2, 2, 3, 5, 6]")
-                ]
+            difficulty="easy",
+            code_stubs={
+                "python": "def merge(nums1, m, nums2, n):\n    # Write your Python code here (modify nums1 in-place)\n    pass",
+                "javascript": "function merge(nums1, m, nums2, n) {\n    \n}",
+                "java": "class Solution {\n    public void merge(int[] nums1, int m, int[] nums2, int n) {\n        \n    }\n}",
+                "cpp": "class Solution {\npublic:\n    void merge(vector<int>& nums1, int m, vector<int>& nums2, int n) {\n        \n    }\n};"
+            },
+            test_cases=[
+                DSATestCase(id="q4_tc1", input="[1,2,3,0,0,0], 3, [2,5,6], 3", expected_output="[1, 2, 2, 3, 5, 6]")
+            ]
+        )
+
+        q_binary_search = DSAQuestion(
+            id="dsa_q_binarysearch",
+            title="Binary Search",
+            problem_statement=(
+                "Given an array of integers `nums` which is sorted in ascending order, and an integer `target`, "
+                "write a function to search `target` in `nums`. If `target` exists, then return its index. "
+                "Otherwise, return `-1`.\n\nYou must write an algorithm with `O(log n)` runtime complexity."
             ),
-            DSAQuestion(
-                id="dsa_q5",
-                title="Binary Search",
-                problem_statement=binary_search_desc,
-                difficulty="easy",
-                code_stubs={
-                    "python": "def search(nums, target):\n    # Write your Python code here\n    pass",
-                    "javascript": "function search(nums, target) {\n    // Write your JavaScript code here\n    return -1;\n}",
-                    "java": "class Solution {\n    public int search(int[] nums, int target) {\n        // Write your Java code here\n        return -1;\n    }\n}",
-                    "cpp": "class Solution {\npublic:\n    int search(vector<int>& nums, int target) {\n        // Write your C++ code here\n        return -1;\n    }\n};"
-                },
-                test_cases=[
-                    DSATestCase(id="q5_tc1", input="[-1,0,3,5,9,12], 9", expected_output="4"),
-                    DSATestCase(id="q5_tc2", input="[-1,0,3,5,9,12], 2", expected_output="-1")
-                ]
-            )
+            difficulty="easy",
+            code_stubs={
+                "python": "def search(nums, target):\n    # Write your Python code here\n    pass",
+                "javascript": "function search(nums, target) {\n    return -1;\n}",
+                "java": "class Solution {\n    public int search(int[] nums, int target) {\n        return -1;\n    }\n}",
+                "cpp": "class Solution {\npublic:\n    int search(vector<int>& nums, int target) {\n        return -1;\n    }\n};"
+            },
+            test_cases=[
+                DSATestCase(id="q5_tc1", input="[-1,0,3,5,9,12], 9", expected_output="4"),
+                DSATestCase(id="q5_tc2", input="[-1,0,3,5,9,12], 2", expected_output="-1")
+            ]
+        )
+
+        q_palindrome_num = DSAQuestion(
+            id="dsa_q_palindromenum",
+            title="Palindrome Number",
+            problem_statement=(
+                "Given an integer `x`, return `true` if `x` is a palindrome, and `false` otherwise.\n\n"
+                "**Example 1:**\n"
+                "* Input: `x = 121`\n"
+                "* Output: `true`"
+            ),
+            difficulty="easy",
+            code_stubs={
+                "python": "def is_palindrome(x):\n    # Write your Python code here\n    pass",
+                "javascript": "function isPalindrome(x) {\n    return false;\n}",
+                "java": "class Solution {\n    public boolean isPalindrome(int x) {\n        return false;\n    }\n}",
+                "cpp": "class Solution {\npublic:\n    bool isPalindrome(int x) {\n        return false;\n    }\n};"
+            },
+            test_cases=[
+                DSATestCase(id="q6_tc1", input="121", expected_output="true"),
+                DSATestCase(id="q6_tc2", input="-121", expected_output="false"),
+                DSATestCase(id="q6_tc3", input="10", expected_output="false")
+            ]
+        )
+
+        q_single_num = DSAQuestion(
+            id="dsa_q_singlenum",
+            title="Single Number",
+            problem_statement=(
+                "Given a non-empty array of integers `nums`, every element appears twice except for one. Find that single one.\n\n"
+                "You must implement a solution with a linear runtime complexity and use only constant extra space.\n\n"
+                "**Example 1:**\n"
+                "* Input: `nums = [2,2,1]`\n"
+                "* Output: `1`"
+            ),
+            difficulty="easy",
+            code_stubs={
+                "python": "def single_number(nums):\n    # Write your Python code here\n    pass",
+                "javascript": "function singleNumber(nums) {\n    return 0;\n}",
+                "java": "class Solution {\n    public int singleNumber(int[] nums) {\n        return 0;\n    }\n}",
+                "cpp": "class Solution {\npublic:\n    int singleNumber(vector<int>& nums) {\n        return 0;\n    }\n};"
+            },
+            test_cases=[
+                DSATestCase(id="q7_tc1", input="[2,2,1]", expected_output="1"),
+                DSATestCase(id="q7_tc2", input="[4,1,2,1,2]", expected_output="4")
+            ]
+        )
+
+        q_fib = DSAQuestion(
+            id="dsa_q_fib",
+            title="Fibonacci Number",
+            problem_statement=(
+                "Given `n`, calculate `F(n)` which represents the sum of the two preceding numbers in the Fibonacci sequence.\n\n"
+                "**Example 1:**\n"
+                "* Input: `n = 2`\n"
+                "* Output: `1`"
+            ),
+            difficulty="easy",
+            code_stubs={
+                "python": "def fib(n):\n    # Write your Python code here\n    pass",
+                "javascript": "function fib(n) {\n    return 0;\n}",
+                "java": "class Solution {\n    public int fib(int n) {\n        return 0;\n    }\n}",
+                "cpp": "class Solution {\npublic:\n    int fib(int n) {\n        return 0;\n    }\n};"
+            },
+            test_cases=[
+                DSATestCase(id="q8_tc1", input="2", expected_output="1"),
+                DSATestCase(id="q8_tc2", input="3", expected_output="2"),
+                DSATestCase(id="q8_tc3", input="4", expected_output="3")
+            ]
+        )
+
+        q_climb_stairs = DSAQuestion(
+            id="dsa_q_climbstairs",
+            title="Climbing Stairs",
+            problem_statement=(
+                "You are climbing a staircase. It takes `n` steps to reach the top.\n\n"
+                "Each time you can either climb 1 or 2 steps. In how many distinct ways can you climb to the top?\n\n"
+                "**Example 1:**\n"
+                "* Input: `n = 2`\n"
+                "* Output: `2`"
+            ),
+            difficulty="easy",
+            code_stubs={
+                "python": "def climb_stairs(n):\n    # Write your Python code here\n    pass",
+                "javascript": "function climbStairs(n) {\n    return 0;\n}",
+                "java": "class Solution {\n    public int climbStairs(int n) {\n        return 0;\n    }\n}",
+                "cpp": "class Solution {\npublic:\n    int climbStairs(int n) {\n        return 0;\n    }\n};"
+            },
+            test_cases=[
+                DSATestCase(id="q9_tc1", input="2", expected_output="2"),
+                DSATestCase(id="q9_tc2", input="3", expected_output="3")
+            ]
+        )
+
+        q_max_profit = DSAQuestion(
+            id="dsa_q_maxprofit",
+            title="Best Time to Buy and Sell Stock",
+            problem_statement=(
+                "You are given an array `prices` where `prices[i]` is the price of a given stock on the `i`th day.\n\n"
+                "Return the maximum profit you can achieve from a single transaction. If you cannot achieve any profit, return `0`.\n\n"
+                "**Example 1:**\n"
+                "* Input: `prices = [7,1,5,3,6,4]`\n"
+                "* Output: `5`"
+            ),
+            difficulty="easy",
+            code_stubs={
+                "python": "def max_profit(prices):\n    # Write your Python code here\n    pass",
+                "javascript": "function maxProfit(prices) {\n    return 0;\n}",
+                "java": "class Solution {\n    public int maxProfit(int[] prices) {\n        return 0;\n    }\n}",
+                "cpp": "class Solution {\npublic:\n    int maxProfit(vector<int>& prices) {\n        return 0;\n    }\n};"
+            },
+            test_cases=[
+                DSATestCase(id="q14_tc1", input="[7,1,5,3,6,4]", expected_output="5"),
+                DSATestCase(id="q14_tc2", input="[7,6,4,3,1]", expected_output="0")
+            ]
+        )
+
+        # Medium pool questions
+        q_max_water = DSAQuestion(
+            id="dsa_q_maxwater",
+            title="Container With Most Water",
+            problem_statement=(
+                "You are given an integer array `height` of length `n`. Return the maximum amount of water a container can store.\n\n"
+                "**Example 1:**\n"
+                "* Input: `height = [1,8,6,2,5,4,8,3,7]`\n"
+                "* Output: `49`"
+            ),
+            difficulty="medium",
+            code_stubs={
+                "python": "def max_area(height):\n    # Write your Python code here\n    pass",
+                "javascript": "function maxArea(height) {\n    return 0;\n}",
+                "java": "class Solution {\n    public int maxArea(int[] height) {\n        return 0;\n    }\n}",
+                "cpp": "class Solution {\npublic:\n    int maxArea(vector<int>& height) {\n        return 0;\n    }\n};"
+            },
+            test_cases=[
+                DSATestCase(id="q10_tc1", input="[1,8,6,2,5,4,8,3,7]", expected_output="49"),
+                DSATestCase(id="q10_tc2", input="[1,1]", expected_output="1")
+            ]
+        )
+
+        q_three_sum = DSAQuestion(
+            id="dsa_q_threesum",
+            title="3Sum",
+            problem_statement=(
+                "Given an integer array `nums`, return all the triplets `[nums[i], nums[j], nums[k]]` such that their sum adds up to zero.\n\n"
+                "**Example 1:**\n"
+                "* Input: `nums = [-1,0,1,2,-1,-4]`\n"
+                "* Output: `[[-1,-1,2],[-1,0,1]]`"
+            ),
+            difficulty="medium",
+            code_stubs={
+                "python": "def three_sum(nums):\n    # Write your Python code here\n    pass",
+                "javascript": "function threeSum(nums) {\n    return [];\n}",
+                "java": "class Solution {\n    public List<List<Integer>> threeSum(int[] nums) {\n        return new ArrayList<>();\n    }\n}",
+                "cpp": "class Solution {\npublic:\n    vector<vector<int>> threeSum(vector<int>& nums) {\n        return {};\n    }\n};"
+            },
+            test_cases=[
+                DSATestCase(id="q11_tc1", input="[-1,0,1,2,-1,-4]", expected_output="[[-1, -1, 2], [-1, 0, 1]]")
+            ]
+        )
+
+        q_longest_substr = DSAQuestion(
+            id="dsa_q_longestsubstr",
+            title="Longest Substring Without Repeating Characters",
+            problem_statement=(
+                "Given a string `s`, find the length of the longest substring without repeating characters.\n\n"
+                "**Example 1:**\n"
+                "* Input: `s = \"abcabcbb\"`\n"
+                "* Output: `3`"
+            ),
+            difficulty="medium",
+            code_stubs={
+                "python": "def length_of_longest_substring(s):\n    # Write your Python code here\n    pass",
+                "javascript": "function lengthOfLongestSubstring(s) {\n    return 0;\n}",
+                "java": "class Solution {\n    public int lengthOfLongestSubstring(String s) {\n        return 0;\n    }\n}",
+                "cpp": "class Solution {\npublic:\n    int lengthOfLongestSubstring(string s) {\n        return 0;\n    }\n};"
+            },
+            test_cases=[
+                DSATestCase(id="q12_tc1", input="'abcabcbb'", expected_output="3"),
+                DSATestCase(id="q12_tc2", input="'bbbbb'", expected_output="1"),
+                DSATestCase(id="q12_tc3", input="'pwwkew'", expected_output="3")
+            ]
+        )
+
+        q_search_rotated = DSAQuestion(
+            id="dsa_q_searchrotated",
+            title="Search in Rotated Sorted Array",
+            problem_statement=(
+                "Given the array `nums` after a possible rotation, and an integer `target`, return the index of `target` if it is in `nums`, or `-1` if it is not.\n\n"
+                "**Example 1:**\n"
+                "* Input: `nums = [4,5,6,7,0,1,2]`, `target = 0`\n"
+                "* Output: `4`"
+            ),
+            difficulty="medium",
+            code_stubs={
+                "python": "def search_rotated(nums, target):\n    # Write your Python code here\n    pass",
+                "javascript": "function search(nums, target) {\n    return -1;\n}",
+                "java": "class Solution {\n    public int search(int[] nums, int target) {\n        return -1;\n    }\n}",
+                "cpp": "class Solution {\npublic:\n    int search(vector<int>& nums, int target) {\n        return -1;\n    }\n};"
+            },
+            test_cases=[
+                DSATestCase(id="q13_tc1", input="[4,5,6,7,0,1,2], 0", expected_output="4"),
+                DSATestCase(id="q13_tc2", input="[4,5,6,7,0,1,2], 3", expected_output="-1")
+            ]
+        )
+
+        q_find_min = DSAQuestion(
+            id="dsa_q_findmin",
+            title="Find Minimum in Rotated Sorted Array",
+            problem_statement=(
+                "Suppose a sorted array of unique elements is rotated. Return the minimum element of this array.\n\n"
+                "**Example 1:**\n"
+                "* Input: `nums = [3,4,5,1,2]`\n"
+                "* Output: `1`"
+            ),
+            difficulty="medium",
+            code_stubs={
+                "python": "def find_min(nums):\n    # Write your Python code here\n    pass",
+                "javascript": "function findMin(nums) {\n    return 0;\n}",
+                "java": "class Solution {\n    public int findMin(int[] nums) {\n        return 0;\n    }\n}",
+                "cpp": "class Solution {\npublic:\n    int findMin(vector<int>& nums) {\n        return 0;\n    }\n};"
+            },
+            test_cases=[
+                DSATestCase(id="q15_tc1", input="[3,4,5,1,2]", expected_output="1"),
+                DSATestCase(id="q15_tc2", input="[4,5,6,7,0,1,2]", expected_output="0")
+            ]
+        )
+
+        easy_pool = [
+            q_two_sum, q_valid_paren, q_reverse_str, q_merge_sorted, 
+            q_binary_search, q_palindrome_num, q_single_num, q_fib, 
+            q_climb_stairs, q_max_profit
+        ]
+        
+        medium_pool = [
+            q_max_water, q_three_sum, q_longest_substr, q_search_rotated, q_find_min
         ]
 
-        if not self.is_configured():
-            return dsa_bank
-
-        instructions = (
-            "You are an expert DSA interviewer. Generate exactly 5 unique, logical data structures and algorithms coding questions "
-            "based on the candidate's skills. Return ONLY a JSON object containing a list of 'questions'. "
-            "Do NOT return any markdown wrapping (e.g. ```json) or extra text. Output strictly raw JSON string.\n"
-            "Format schema:\n"
-            "{\n"
-            "  \"questions\": [\n"
-            "    {\n"
-            "      \"id\": \"dsa_q1\",\n"
-            "      \"title\": \"Two Sum\",\n"
-            "      \"problem_statement\": \"Given an array of integers...\",\n"
-            "      \"difficulty\": \"easy\",\n"
-            "      \"code_stubs\": {\n"
-            "        \"python\": \"def two_sum(nums, target):\\n    pass\",\n"
-            "        \"javascript\": \"function twoSum(nums, target) {\\n    return [];\\n}\",\n"
-            "        \"java\": \"class Solution {\\n    public int[] twoSum(int[] nums, int target) {\\n        return new int[0];\\n    }\\n}\",\n"
-            "        \"cpp\": \"class Solution {\\npublic:\\n    vector<int> twoSum(vector<int>& nums, int target) {\\n        return {};\\n    }\\n};\"\n"
-            "      },\n"
-            "      \"test_cases\": [\n"
-            "        {\"id\": \"q1_tc1\", \"input\": \"[2,7,11,15], 9\", \"expected_output\": \"[0, 1]\"},\n"
-            "        {\"id\": \"q1_tc2\", \"input\": \"[3,2,4], 6\", \"expected_output\": \"[1, 2]\"}\n"
-            "      ]\n"
-            "    }\n"
-            "  ]\n"
-            "}\n"
-            "Requirements:\n"
-            "1. Generate exactly 5 questions. The set MUST have mixed difficulty: 2 easy, 2 medium, and 1 hard.\n"
-            "2. Tailor them to these skills: " + ", ".join(skills[:8]) + ". If skills are empty, use general core software engineering concepts.\n"
-            "3. Ensure each Python code stub uses standard lower_snake_case for the function name.\n"
-            "4. Ensure test cases use valid Python literal values for 'input' and 'expected_output' so they can be parsed by `eval` (e.g. lists, dicts, integers, strings).\n"
-            "5. Ensure that the first line of the python code stub defines the function (e.g. 'def func_name(') so the executor can extract the name."
-        )
-
-        try:
-            json_data = None
-            if self.provider == "ollama":
-                body = {
-                    "model": self.ollama_model,
-                    "stream": False,
-                    "messages": [
-                        {"role": "system", "content": instructions},
-                        {"role": "user", "content": "Generate 5 dynamic DSA questions based on candidate skills."}
-                    ],
-                    "format": "json",
-                    "options": {
-                        "temperature": 0.5,
-                        "num_ctx": 4096,
-                        "num_predict": 1800
-                    }
-                }
-                request = urllib.request.Request(
-                    f"{self.ollama_base_url}/api/chat",
-                    data=json.dumps(body).encode("utf-8"),
-                    headers={"Content-Type": "application/json"},
-                    method="POST"
-                )
-                with urllib.request.urlopen(request, timeout=45.0) as response:
-                    payload = json.loads(response.read().decode("utf-8"))
-                text = str(payload.get("message", {}).get("content") or "").strip()
-                json_data = self._parse_json_text(text)
-            else:
-                body = {
-                    "model": self.model,
-                    "messages": [
-                        {"role": "system", "content": instructions},
-                        {"role": "user", "content": "Generate 5 dynamic DSA questions based on candidate skills."}
-                    ],
-                    "response_format": {"type": "json_object"},
-                    "temperature": 0.7,
-                    "max_tokens": 2048
-                }
-                request = urllib.request.Request(
-                    self.endpoint,
-                    data=json.dumps(body).encode("utf-8"),
-                    headers={
-                        "Authorization": f"Bearer {self.api_key}",
-                        "Content-Type": "application/json"
-                    },
-                    method="POST"
-                )
-                with urllib.request.urlopen(request, timeout=30.0) as response:
-                    payload = json.loads(response.read().decode("utf-8"))
-                text = self._extract_output_text(payload)
-                json_data = self._parse_json_text(text)
-
-            if json_data and "questions" in json_data:
-                parsed_questions = []
-                for idx, q_dict in enumerate(json_data["questions"]):
-                    difficulty = str(q_dict.get("difficulty") or "easy").lower()
-                    if difficulty not in {"easy", "medium", "hard"}:
-                        difficulty = "easy"
-                        
-                    test_cases = []
-                    for tc_idx, tc_dict in enumerate(q_dict.get("test_cases", [])):
-                        test_cases.append(DSATestCase(
-                            id=str(tc_dict.get("id") or f"q{idx+1}_tc{tc_idx+1}"),
-                            input=str(tc_dict.get("input")),
-                            expected_output=str(tc_dict.get("expected_output")),
-                            passed=None,
-                            actual_output=None
-                        ))
-                    
-                    parsed_questions.append(DSAQuestion(
-                        id=str(q_dict.get("id") or f"dsa_q{idx+1}"),
-                        title=str(q_dict.get("title") or f"Challenge {idx+1}"),
-                        problem_statement=str(q_dict.get("problem_statement") or ""),
-                        difficulty=difficulty,
-                        code_stubs=dict(q_dict.get("code_stubs") or {
-                            "python": "def challenge(arg):\n    pass",
-                            "javascript": "function challenge(arg) {\n}",
-                            "java": "class Solution {\n    public void challenge() {}\n}",
-                            "cpp": "class Solution {\npublic:\n    void challenge() {}\n};"
-                        }),
-                        test_cases=test_cases,
-                        status="unsolved"
-                    ))
-                
-                if len(parsed_questions) >= 3:
-                    return parsed_questions
-        except Exception as exc:
-            print(f"Dynamic DSA generation failed, using robust fallback bank. Details: {exc}")
-
-        return dsa_bank
+        # Select a unique set of 5 challenges (3 Easy, 2 Medium) randomly
+        selected_easy = random.sample(easy_pool, 3)
+        selected_medium = random.sample(medium_pool, 2)
+        
+        # Merge
+        final_list = selected_easy + selected_medium
+        
+        # Assign dynamic unique question IDs and order for the session
+        for idx, q in enumerate(final_list):
+            q.id = f"dsa_session_q{idx+1}"
+            
+        return final_list
 
     def _difficulty_guidance(self, question_number: int, previous_score: Optional[int]) -> str:
 
