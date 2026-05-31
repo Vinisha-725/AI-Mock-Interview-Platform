@@ -759,6 +759,132 @@ class OpenAIService:
                 ]
             )
         ]
+
+        if not self.is_configured():
+            return dsa_bank
+
+        instructions = (
+            "You are an expert DSA interviewer. Generate exactly 5 unique, logical data structures and algorithms coding questions "
+            "based on the candidate's skills. Return ONLY a JSON object containing a list of 'questions'. "
+            "Do NOT return any markdown wrapping (e.g. ```json) or extra text. Output strictly raw JSON string.\n"
+            "Format schema:\n"
+            "{\n"
+            "  \"questions\": [\n"
+            "    {\n"
+            "      \"id\": \"dsa_q1\",\n"
+            "      \"title\": \"Two Sum\",\n"
+            "      \"problem_statement\": \"Given an array of integers...\",\n"
+            "      \"difficulty\": \"easy\",\n"
+            "      \"code_stubs\": {\n"
+            "        \"python\": \"def two_sum(nums, target):\\n    pass\",\n"
+            "        \"javascript\": \"function twoSum(nums, target) {\\n    return [];\\n}\",\n"
+            "        \"java\": \"class Solution {\\n    public int[] twoSum(int[] nums, int target) {\\n        return new int[0];\\n    }\\n}\",\n"
+            "        \"cpp\": \"class Solution {\\npublic:\\n    vector<int> twoSum(vector<int>& nums, int target) {\\n        return {};\\n    }\\n};\"\n"
+            "      },\n"
+            "      \"test_cases\": [\n"
+            "        {\"id\": \"q1_tc1\", \"input\": \"[2,7,11,15], 9\", \"expected_output\": \"[0, 1]\"},\n"
+            "        {\"id\": \"q1_tc2\", \"input\": \"[3,2,4], 6\", \"expected_output\": \"[1, 2]\"}\n"
+            "      ]\n"
+            "    }\n"
+            "  ]\n"
+            "}\n"
+            "Requirements:\n"
+            "1. Generate exactly 5 questions. The set MUST have mixed difficulty: 2 easy, 2 medium, and 1 hard.\n"
+            "2. Tailor them to these skills: " + ", ".join(skills[:8]) + ". If skills are empty, use general core software engineering concepts.\n"
+            "3. Ensure each Python code stub uses standard lower_snake_case for the function name.\n"
+            "4. Ensure test cases use valid Python literal values for 'input' and 'expected_output' so they can be parsed by `eval` (e.g. lists, dicts, integers, strings).\n"
+            "5. Ensure that the first line of the python code stub defines the function (e.g. 'def func_name(') so the executor can extract the name."
+        )
+
+        try:
+            json_data = None
+            if self.provider == "ollama":
+                body = {
+                    "model": self.ollama_model,
+                    "stream": False,
+                    "messages": [
+                        {"role": "system", "content": instructions},
+                        {"role": "user", "content": "Generate 5 dynamic DSA questions based on candidate skills."}
+                    ],
+                    "format": "json",
+                    "options": {
+                        "temperature": 0.5,
+                        "num_ctx": 4096,
+                        "num_predict": 1800
+                    }
+                }
+                request = urllib.request.Request(
+                    f"{self.ollama_base_url}/api/chat",
+                    data=json.dumps(body).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST"
+                )
+                with urllib.request.urlopen(request, timeout=45.0) as response:
+                    payload = json.loads(response.read().decode("utf-8"))
+                text = str(payload.get("message", {}).get("content") or "").strip()
+                json_data = self._parse_json_text(text)
+            else:
+                body = {
+                    "model": self.model,
+                    "messages": [
+                        {"role": "system", "content": instructions},
+                        {"role": "user", "content": "Generate 5 dynamic DSA questions based on candidate skills."}
+                    ],
+                    "response_format": {"type": "json_object"},
+                    "temperature": 0.7,
+                    "max_tokens": 2048
+                }
+                request = urllib.request.Request(
+                    self.endpoint,
+                    data=json.dumps(body).encode("utf-8"),
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    method="POST"
+                )
+                with urllib.request.urlopen(request, timeout=30.0) as response:
+                    payload = json.loads(response.read().decode("utf-8"))
+                text = self._extract_output_text(payload)
+                json_data = self._parse_json_text(text)
+
+            if json_data and "questions" in json_data:
+                parsed_questions = []
+                for idx, q_dict in enumerate(json_data["questions"]):
+                    difficulty = str(q_dict.get("difficulty") or "easy").lower()
+                    if difficulty not in {"easy", "medium", "hard"}:
+                        difficulty = "easy"
+                        
+                    test_cases = []
+                    for tc_idx, tc_dict in enumerate(q_dict.get("test_cases", [])):
+                        test_cases.append(DSATestCase(
+                            id=str(tc_dict.get("id") or f"q{idx+1}_tc{tc_idx+1}"),
+                            input=str(tc_dict.get("input")),
+                            expected_output=str(tc_dict.get("expected_output")),
+                            passed=None,
+                            actual_output=None
+                        ))
+                    
+                    parsed_questions.append(DSAQuestion(
+                        id=str(q_dict.get("id") or f"dsa_q{idx+1}"),
+                        title=str(q_dict.get("title") or f"Challenge {idx+1}"),
+                        problem_statement=str(q_dict.get("problem_statement") or ""),
+                        difficulty=difficulty,
+                        code_stubs=dict(q_dict.get("code_stubs") or {
+                            "python": "def challenge(arg):\n    pass",
+                            "javascript": "function challenge(arg) {\n}",
+                            "java": "class Solution {\n    public void challenge() {}\n}",
+                            "cpp": "class Solution {\npublic:\n    void challenge() {}\n};"
+                        }),
+                        test_cases=test_cases,
+                        status="unsolved"
+                    ))
+                
+                if len(parsed_questions) >= 3:
+                    return parsed_questions
+        except Exception as exc:
+            print(f"Dynamic DSA generation failed, using robust fallback bank. Details: {exc}")
+
         return dsa_bank
 
     def _difficulty_guidance(self, question_number: int, previous_score: Optional[int]) -> str:
