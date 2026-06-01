@@ -360,20 +360,20 @@ class ResumeParser:
             r'(?:PMP|Scrum|Agile|CCNA|CCNP|CEH|CISSP|CISA|CISM|ITIL|Prince2)\s+(?:Certified?|Practitioner|Professional)',
             r'(?:Certificate?|Certification?)\s+(?:in|of|for)\s+[^.\n]+',
         ]
-        
+
         found_certs = []
-        
+
         for pattern in cert_patterns:
             matches = re.findall(pattern, text, re.IGNORECASE)
             for match in matches:
                 cert = match.strip()
                 if len(cert) > 10 and cert not in found_certs:
                     found_certs.append(cert)
-        
+
         # Also look for lines with certification keywords
         cert_keywords = ["AWS", "Azure", "GCP", "Google Cloud", "Microsoft", "Oracle", "Cisco", "PMP", "Scrum", "Agile", "CCNA", "CCNP", "CEH", "CISSP", "CISA", "CISM", "ITIL"]
         lines = text.split('\n')
-        
+
         for line in lines:
             line_lower = line.lower()
             for cert in cert_keywords:
@@ -382,11 +382,96 @@ class ResumeParser:
                     if cert_line not in found_certs:
                         found_certs.append(cert_line)
                     break
-        
+
         print(f"Found {len(found_certs)} certifications")
         return found_certs[:8]  # Return max 8 certifications
 
-    def parse_resume(self, file_content: bytes, filename: str) -> ResumeUploadResponse:
+    def extract_name(self, text: str) -> str:
+        # Try to extract name from the beginning of the resume
+        lines = text.split('\n')
+        for i, line in enumerate(lines[:5]):  # Check first 5 lines
+            line = line.strip()
+            # Skip empty lines, email lines, phone lines
+            if not line or '@' in line or re.search(r'\d{3}[-.\s]?\d{3}[-.\s]?\d{4}', line):
+                continue
+            # Skip common header words
+            skip_words = {'resume', 'curriculum vitae', 'cv', 'profile', 'summary', 'objective', 'contact', 'experience', 'education', 'skills', 'projects'}
+            if line.lower() in skip_words:
+                continue
+            # Check if line looks like a name (2-4 words, each starting with capital letter)
+            words = line.split()
+            if 2 <= len(words) <= 4 and all(word[0].isupper() for word in words if word):
+                # Verify it's not a section header
+                if line.lower() not in skip_words and not any(skip_word in line.lower() for skip_word in skip_words):
+                    print(f"Found name: {line}")
+                    return line
+        return ""
+
+    def extract_email(self, text: str) -> str:
+        # Extract email using regex
+        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+        match = re.search(email_pattern, text)
+        if match:
+            email = match.group().lower()
+            print(f"Found email: {email}")
+            return email
+        return ""
+
+    def extract_target_role(self, text: str) -> str:
+        # Try to extract target role from objective/summary section
+        objective_section = self.get_section(text, ["objective", "summary", "profile", "career objective", "professional summary"])
+        if objective_section:
+            # Look for role keywords in objective
+            role_keywords = [
+                "software engineer", "developer", "frontend developer", "backend developer", "full stack developer",
+                "data scientist", "machine learning engineer", "data analyst", "data engineer",
+                "product manager", "project manager", "scrum master",
+                "devops engineer", "site reliability engineer", "cloud engineer",
+                "mobile developer", "android developer", "ios developer",
+                "web developer", "web designer", "ui/ux designer",
+                "quality assurance engineer", "qa engineer", "test engineer",
+                "system architect", "technical architect", "solution architect",
+                "security engineer", "cybersecurity engineer",
+                "ai engineer", "ml engineer", "nlp engineer",
+                "research engineer", "research scientist"
+            ]
+            for role in role_keywords:
+                if role in objective_section.lower():
+                    print(f"Found target role from objective: {role}")
+                    return role.title()
+
+        # Try to infer from skills and experience
+        skills = self.extract_skills(text)
+        skills_lower = ' '.join(skills).lower()
+
+        role_mapping = {
+            "software engineer": ["java", "python", "c++", "javascript", "software development"],
+            "frontend developer": ["react", "angular", "vue", "html", "css", "javascript", "typescript"],
+            "backend developer": ["node", "python", "java", "api", "database", "server"],
+            "full stack developer": ["react", "node", "javascript", "frontend", "backend"],
+            "data scientist": ["python", "machine learning", "tensorflow", "pytorch", "pandas", "numpy"],
+            "machine learning engineer": ["python", "tensorflow", "pytorch", "machine learning", "ml"],
+            "data analyst": ["python", "sql", "excel", "tableau", "power bi", "data analysis"],
+            "devops engineer": ["docker", "kubernetes", "aws", "azure", "ci/cd", "jenkins"],
+            "mobile developer": ["android", "ios", "react native", "flutter", "swift", "kotlin"],
+            "ui/ux designer": ["figma", "sketch", "design", "ui", "ux", "user experience"]
+        }
+
+        best_match = ""
+        max_matches = 0
+        for role, keywords in role_mapping.items():
+            matches = sum(1 for keyword in keywords if keyword in skills_lower)
+            if matches > max_matches:
+                max_matches = matches
+                best_match = role
+
+        if best_match:
+            print(f"Inferred target role from skills: {best_match}")
+            return best_match.title()
+
+        return ""
+
+    def parse_resume(self, file_content: bytes, filename: str) -> dict:
         print(f"=== Starting resume parsing for: {filename} ===")
         text = self.extract_text(file_content, filename)
         print(f"Total text length: {len(text)} characters")
@@ -394,25 +479,33 @@ class ResumeParser:
 
         if len(text) < 30:
             raise ValueError("No readable text found in this resume. If this is a scanned PDF/image, upload a text-based PDF or DOCX.")
-        
+
         # Extract all information
+        name = self.extract_name(text)
+        email = self.extract_email(text)
+        target_role = self.extract_target_role(text)
         skills = self.extract_skills(text)
         projects = self.extract_projects(text)
         experience = self.extract_experience(text)
         education = self.extract_education(text)
         tech_stack = self.extract_tech_stack(text)
         certifications = self.extract_certifications(text)
-        
+
         print(f"=== Parsing Complete ===")
+        print(f"Name: {name}, Email: {email}, Target Role: {target_role}")
         print(f"Skills: {len(skills)}, Projects: {len(projects)}, Experience: {len(experience)}, Education: {len(education)}, Tech Stack: {len(tech_stack)}, Certifications: {len(certifications)}")
-        
-        return ResumeUploadResponse(
-            skills=skills if skills else [],
-            projects=projects if projects else [],
-            experience=experience if experience else [],
-            education=education if education else [],
-            techStack=tech_stack if tech_stack else [],
-            certifications=certifications if certifications else []
-        )
+
+        return {
+            "full_name": name,
+            "email": email,
+            "target_role": target_role,
+            "skills": skills if skills else [],
+            "projects": [p.model_dump() for p in projects] if projects else [],
+            "experience": [e.model_dump() for e in experience] if experience else [],
+            "education": [e.model_dump() for e in education] if education else [],
+            "tech_stack": tech_stack if tech_stack else [],
+            "certifications": certifications if certifications else [],
+            "resume_text": text
+        }
 
 resume_parser = ResumeParser()

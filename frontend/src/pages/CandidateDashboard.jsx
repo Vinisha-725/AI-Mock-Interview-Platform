@@ -171,19 +171,31 @@ export default function CandidateDashboard() {
           <div className="activity-list">
             <div className="activity-item">
               <span>Target Role</span>
-              <strong>{profile?.profile?.target_role || 'Not set'}</strong>
+              <strong>{profile?.profile?.target_role || profile?.target_role || 'Not set'}</strong>
             </div>
             <div className="activity-item">
               <span>Skills</span>
-              <strong>{profile?.profile?.skills?.length || 0} skills</strong>
+              <strong>{profile?.profile?.skills?.length || profile?.skills?.length || 0} skills</strong>
             </div>
             <div className="activity-item">
               <span>Projects</span>
-              <strong>{profile?.profile?.projects?.length || 0} projects</strong>
+              <strong>{profile?.profile?.projects?.length || profile?.projects?.length || 0} projects</strong>
+            </div>
+            <div className="activity-item">
+              <span>Experience</span>
+              <strong>{profile?.profile?.experience?.length || profile?.experience?.length || 0} entries</strong>
+            </div>
+            <div className="activity-item">
+              <span>Education</span>
+              <strong>{profile?.profile?.education?.length || profile?.education?.length || 0} entries</strong>
+            </div>
+            <div className="activity-item">
+              <span>Certifications</span>
+              <strong>{profile?.profile?.certifications?.length || profile?.certifications?.length || 0} certifications</strong>
             </div>
             <div className="activity-item">
               <span>Resume</span>
-              <strong>{profile?.profile?.resume_text ? 'Saved' : 'Not uploaded'}</strong>
+              <strong>{profile?.profile?.resume_text || profile?.resume_text ? 'Saved' : 'Not uploaded'}</strong>
             </div>
           </div>
           <div style={{ marginTop: 15 }}>
@@ -194,7 +206,7 @@ export default function CandidateDashboard() {
         </Card>
       </div>
 
-      {profile?.profile?.resume_text && (
+      {(profile?.profile?.resume_text || profile?.resume_text) && (
         <Card>
           <SectionHead title="Saved Resume" description="Your resume is saved in your profile. You don't need to upload it again." />
           <div style={{
@@ -208,10 +220,86 @@ export default function CandidateDashboard() {
             fontSize: '14px',
             color: '#d1d5db'
           }}>
-            {profile.profile.resume_text}
+            {profile?.profile?.resume_text || profile?.resume_text}
           </div>
         </Card>
       )}
+
+      <Card>
+        <SectionHead title="Detailed Profile Information" description="All your profile details." />
+        <div style={{ display: 'grid', gap: '20px' }}>
+          <div>
+            <h4 style={{ marginBottom: '10px', color: '#a5b4fc' }}>Skills</h4>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {(profile?.profile?.skills || profile?.skills || []).map((skill, index) => (
+                <span key={index} className="pill">{skill}</span>
+              ))}
+            </div>
+          </div>
+
+          {(profile?.profile?.projects || profile?.projects || []).length > 0 && (
+            <div>
+              <h4 style={{ marginBottom: '10px', color: '#a5b4fc' }}>Projects</h4>
+              <div style={{ display: 'grid', gap: '15px' }}>
+                {(profile?.profile?.projects || profile?.projects || []).map((project, index) => (
+                  <div key={index} style={{ padding: '15px', backgroundColor: '#1f2937', borderRadius: '8px' }}>
+                    <strong style={{ color: '#fff' }}>{project.name}</strong>
+                    <p style={{ color: '#9ca3af', fontSize: '14px', marginTop: '5px' }}>{project.description}</p>
+                    {project.tech && project.tech.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '10px' }}>
+                        {project.tech.map((tech, i) => (
+                          <span key={i} className="pill" style={{ fontSize: '12px' }}>{tech}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(profile?.profile?.experience || profile?.experience || []).length > 0 && (
+            <div>
+              <h4 style={{ marginBottom: '10px', color: '#a5b4fc' }}>Experience</h4>
+              <div style={{ display: 'grid', gap: '15px' }}>
+                {(profile?.profile?.experience || profile?.experience || []).map((exp, index) => (
+                  <div key={index} style={{ padding: '15px', backgroundColor: '#1f2937', borderRadius: '8px' }}>
+                    <strong style={{ color: '#fff' }}>{exp.role}</strong>
+                    <p style={{ color: '#9ca3af', fontSize: '14px', marginTop: '5px' }}>{exp.company}</p>
+                    <p style={{ color: '#6b7280', fontSize: '13px' }}>{exp.duration}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(profile?.profile?.education || profile?.education || []).length > 0 && (
+            <div>
+              <h4 style={{ marginBottom: '10px', color: '#a5b4fc' }}>Education</h4>
+              <div style={{ display: 'grid', gap: '15px' }}>
+                {(profile?.profile?.education || profile?.education || []).map((edu, index) => (
+                  <div key={index} style={{ padding: '15px', backgroundColor: '#1f2937', borderRadius: '8px' }}>
+                    <strong style={{ color: '#fff' }}>{edu.degree}</strong>
+                    <p style={{ color: '#9ca3af', fontSize: '14px', marginTop: '5px' }}>{edu.institution}</p>
+                    <p style={{ color: '#6b7280', fontSize: '13px' }}>{edu.year}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(profile?.profile?.certifications || profile?.certifications || []).length > 0 && (
+            <div>
+              <h4 style={{ marginBottom: '10px', color: '#a5b4fc' }}>Certifications</h4>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {(profile?.profile?.certifications || profile?.certifications || []).map((cert, index) => (
+                  <span key={index} className="pill">{cert}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </Card>
     </AppShell>
   )
 }

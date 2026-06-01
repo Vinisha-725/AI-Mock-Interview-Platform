@@ -54,7 +54,19 @@ export default function CandidateOnboarding() {
   const handleSave = async () => {
     setLoading(true)
     try {
-      await api.put('/auth/candidate/profile', profile)
+      // Send all profile data including email
+      const profileData = {
+        full_name: profile.full_name,
+        email: profile.email,
+        target_role: profile.target_role,
+        resume_text: profile.resume_text,
+        skills: profile.skills,
+        projects: profile.projects,
+        experience: profile.experience,
+        education: profile.education,
+        certifications: profile.certifications
+      }
+      await api.put('/auth/candidate/profile', profileData)
       navigate('/candidate-dashboard')
     } catch (error) {
       console.error('Failed to save profile:', error)
@@ -134,19 +146,83 @@ export default function CandidateOnboarding() {
     setProfile({ ...profile, certifications: profile.certifications.filter((_, i) => i !== index) })
   }
 
-  const handleResumeUpload = (e) => {
+  const handleResumeUpload = async (e) => {
     const file = e.target.files[0]
     if (file) {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        setProfile({ ...profile, resume_text: event.target.result })
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+
+        const response = await api.post('/auth/candidate/parse-resume', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+
+        if (response.data.success && response.data.data) {
+          const parsed = response.data.data
+
+          // Auto-populate profile with parsed data
+          setProfile({
+            full_name: parsed.full_name || profile.full_name,
+            email: parsed.email || profile.email,
+            target_role: parsed.target_role || profile.target_role,
+            skills: parsed.skills || profile.skills,
+            projects: parsed.projects || profile.projects,
+            experience: parsed.experience || profile.experience,
+            education: parsed.education || profile.education,
+            certifications: parsed.certifications || profile.certifications,
+            resume_text: parsed.resume_text || profile.resume_text
+          })
+
+          alert('Resume parsed successfully! Please review and edit the extracted information as needed.')
+        }
+      } catch (error) {
+        console.error('Failed to parse resume:', error)
+        alert('Failed to parse resume. Please try again or enter your details manually.')
+
+        // Fallback: just read the file as text
+        const reader = new FileReader()
+        reader.onload = (event) => {
+          setProfile({ ...profile, resume_text: event.target.result })
+        }
+        reader.readAsText(file)
       }
-      reader.readAsText(file)
     }
   }
 
   return (
     <AppShell title="Complete Your Profile" description="Tell us about yourself to get personalized interview recommendations.">
+      <Card>
+        <SectionHead title="Upload Resume" description="Upload your resume to automatically extract your profile details. You can edit the extracted information as needed." />
+        <div style={{ padding: '20px', backgroundColor: '#1f2937', borderRadius: '8px', marginBottom: '15px' }}>
+          <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '15px' }}>
+            <label className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <Upload size={18} />
+              <span>Upload Resume (PDF, DOCX, TXT)</span>
+              <input type="file" accept=".txt,.pdf,.doc,.docx" onChange={handleResumeUpload} style={{ display: 'none' }} />
+            </label>
+            {profile.resume_text && <span className="pill" style={{ color: '#22c55e' }}>Resume uploaded and parsed</span>}
+          </div>
+          <p style={{ color: '#9ca3af', fontSize: '14px' }}>
+            We'll automatically extract your name, email, target role, skills, projects, experience, education, and certifications from your resume.
+            You can review and edit all extracted information before saving.
+          </p>
+        </div>
+        {profile.resume_text && (
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Resume Text (editable)</label>
+            <textarea
+              value={profile.resume_text}
+              onChange={(e) => setProfile({ ...profile, resume_text: e.target.value })}
+              placeholder="Your resume text will appear here after upload..."
+              rows={8}
+              style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #374151', backgroundColor: '#111827', color: '#fff', fontFamily: 'monospace' }}
+            />
+          </div>
+        )}
+      </Card>
+
       <Card>
         <SectionHead title="Basic Information" description="Your contact details and target role." />
         <div style={{ display: 'grid', gap: '20px', maxWidth: '600px' }}>
@@ -387,25 +463,6 @@ export default function CandidateOnboarding() {
             </span>
           ))}
         </div>
-      </Card>
-
-      <Card>
-        <SectionHead title="Resume" description="Upload your resume (text format). This will be saved to your profile." />
-        <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '15px' }}>
-          <label className="btn btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-            <Upload size={18} />
-            <span>Upload Resume</span>
-            <input type="file" accept=".txt,.pdf,.doc,.docx" onChange={handleResumeUpload} style={{ display: 'none' }} />
-          </label>
-          {profile.resume_text && <span className="pill" style={{ color: '#22c55e' }}>Resume uploaded</span>}
-        </div>
-        <textarea
-          value={profile.resume_text}
-          onChange={(e) => setProfile({ ...profile, resume_text: e.target.value })}
-          placeholder="Or paste your resume text here..."
-          rows={10}
-          style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #374151', backgroundColor: '#111827', color: '#fff', fontFamily: 'monospace' }}
-        />
       </Card>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '15px', marginTop: '30px' }}>
