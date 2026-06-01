@@ -10,13 +10,13 @@ def get_user_id() -> str:
 
 @router.get("/recruiter/candidates")
 async def get_all_candidates():
-    """Get all candidates with their profiles and interview history"""
+    """Get all candidates with their profiles, interview history, and job applications"""
     try:
         # Get all users with role 'candidate'
         users_response = db.client.table('users').select('*').eq('role', 'candidate').execute()
         candidates = users_response.data
 
-        # Fetch profiles and interview history for each candidate
+        # Fetch profiles, interview history, and job applications for each candidate
         candidates_with_data = []
         for candidate in candidates:
             # Get candidate profile
@@ -28,6 +28,9 @@ async def get_all_candidates():
             # Get recent interview sessions
             sessions = db.get_user_sessions(candidate['id'])
 
+            # Get job applications
+            applications = db.get_candidate_applications(candidate['id'])
+
             candidates_with_data.append({
                 "id": candidate['id'],
                 "email": candidate['email'],
@@ -36,8 +39,10 @@ async def get_all_candidates():
                 "profile": profile if profile else None,
                 "interview_history": history if history else [],
                 "recent_sessions": sessions if sessions else [],
+                "job_applications": applications if applications else [],
                 "total_interviews": len(history) if history else 0,
-                "average_score": sum(h['total_score'] for h in history) // len(history) if history else 0
+                "average_score": sum(h['total_score'] for h in history) // len(history) if history else 0,
+                "applied_roles": [app['job_descriptions']['title'] for app in applications] if applications else []
             })
 
         return candidates_with_data
@@ -78,6 +83,9 @@ async def get_candidate_details(candidate_id: str):
                 "answers": answers
             })
 
+        # Get job applications
+        applications = db.get_candidate_applications(candidate_id)
+
         return {
             "id": candidate['id'],
             "email": candidate['email'],
@@ -86,6 +94,7 @@ async def get_candidate_details(candidate_id: str):
             "profile": profile if profile else None,
             "interview_history": history if history else [],
             "interview_sessions": sessions_with_details,
+            "job_applications": applications if applications else [],
             "total_interviews": len(history) if history else 0,
             "average_score": sum(h['total_score'] for h in history) // len(history) if history else 0
         }

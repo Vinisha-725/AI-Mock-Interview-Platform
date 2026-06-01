@@ -116,5 +116,25 @@ class Database:
         response = self._table("job_descriptions").select("*").eq("recruiter_id", recruiter_id).order("created_at", desc=True).execute()
         return response.data
 
+    def create_job_application(self, application_data: dict):
+        response = self._table("job_applications").insert(application_data).execute()
+        return response.data[0] if response.data else None
+
+    def get_candidate_applications(self, candidate_id: str):
+        response = self._table("job_applications").select("*, job_descriptions(*)").eq("candidate_id", candidate_id).order("applied_at", desc=True).execute()
+        return response.data
+
+    def get_job_applications(self, job_id: str):
+        response = self._table("job_applications").select("*, users!candidate_id(full_name, email)").eq("job_id", job_id).order("applied_at", desc=True).execute()
+        return response.data
+
+    def update_job_application(self, application_id: str, application_data: dict):
+        response = self._table("job_applications").update(application_data).eq("id", application_id).execute()
+        return response.data[0] if response.data else None
+
+    def get_all_job_applications(self):
+        response = self._table("job_applications").select("*, job_descriptions(*), users!candidate_id(full_name, email)").order("applied_at", desc=True).execute()
+        return response.data
+
 
 db = Database(supabase)

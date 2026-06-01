@@ -27,6 +27,7 @@ CREATE TABLE candidate_profiles (
   experience JSONB DEFAULT '[]',
   education JSONB DEFAULT '[]',
   certifications JSONB DEFAULT '[]',
+  target_role VARCHAR(255),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(user_id)
@@ -59,6 +60,22 @@ CREATE TABLE job_descriptions (
 );
 
 CREATE INDEX idx_job_descriptions_recruiter_id ON job_descriptions(recruiter_id);
+
+-- Step 4.5: Create job_applications table
+CREATE TABLE job_applications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  job_id UUID REFERENCES job_descriptions(id) ON DELETE CASCADE,
+  candidate_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  status VARCHAR(50) DEFAULT 'applied' CHECK (status IN ('applied', 'screening', 'interview', 'offered', 'rejected', 'hired')),
+  match_score INTEGER DEFAULT 0,
+  applied_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(job_id, candidate_id)
+);
+
+CREATE INDEX idx_job_applications_job_id ON job_applications(job_id);
+CREATE INDEX idx_job_applications_candidate_id ON job_applications(candidate_id);
+CREATE INDEX idx_job_applications_status ON job_applications(status);
 
 -- Step 5: Create interview_sessions table
 CREATE TABLE interview_sessions (
@@ -142,6 +159,7 @@ ALTER TABLE session_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE interview_questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE interview_answers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE job_descriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE job_applications ENABLE ROW LEVEL SECURITY;
 
 -- Step 10: Create RLS Policies (for development - you can tighten these later)
 -- Users can view own profile
@@ -180,6 +198,13 @@ CREATE POLICY "Recruiters can view own job descriptions" ON job_descriptions FOR
 CREATE POLICY "Recruiters can insert own job descriptions" ON job_descriptions FOR INSERT WITH CHECK (auth.uid() = recruiter_id);
 CREATE POLICY "Recruiters can update own job descriptions" ON job_descriptions FOR UPDATE USING (auth.uid() = recruiter_id);
 
+-- Candidates can view own job applications
+CREATE POLICY "Candidates can view own applications" ON job_applications FOR SELECT USING (auth.uid() = candidate_id);
+CREATE POLICY "Candidates can insert own applications" ON job_applications FOR INSERT WITH CHECK (auth.uid() = candidate_id);
+CREATE POLICY "Recruiters can view applications for own jobs" ON job_applications FOR SELECT USING (
+  auth.uid() IN (SELECT recruiter_id FROM job_descriptions WHERE id = job_id)
+);
+
 -- Step 11: Create a function to automatically update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -203,4 +228,7 @@ CREATE TRIGGER update_interview_sessions_updated_at BEFORE UPDATE ON interview_s
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_job_descriptions_updated_at BEFORE UPDATE ON job_descriptions
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_job_applications_updated_at BEFORE UPDATE ON job_applications
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

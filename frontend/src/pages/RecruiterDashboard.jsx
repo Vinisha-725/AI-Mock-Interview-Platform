@@ -259,6 +259,8 @@ export default function RecruiterDashboard() {
               <tr>
                 <th>Name</th>
                 <th>Email</th>
+                <th>Applied Roles</th>
+                <th>Skills</th>
                 <th>Interviews</th>
                 <th>Avg Score</th>
                 <th>Readiness</th>
@@ -269,7 +271,7 @@ export default function RecruiterDashboard() {
             <tbody>
               {candidates.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '40px' }}>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px' }}>
                     <span className="muted">No candidates registered yet.</span>
                   </td>
                 </tr>
@@ -278,6 +280,18 @@ export default function RecruiterDashboard() {
                   <tr key={candidate.id}>
                     <td>{candidate.full_name || candidate.email}</td>
                     <td>{candidate.email}</td>
+                    <td>
+                      {candidate.applied_roles && candidate.applied_roles.length > 0
+                        ? candidate.applied_roles.join(', ')
+                        : <span className="muted">No applications</span>
+                      }
+                    </td>
+                    <td>
+                      {candidate.profile && candidate.profile.skills && candidate.profile.skills.length > 0
+                        ? candidate.profile.skills.slice(0, 3).join(', ') + (candidate.profile.skills.length > 3 ? '...' : '')
+                        : <span className="muted">No skills</span>
+                      }
+                    </td>
                     <td>{candidate.total_interviews}</td>
                     <td>{candidate.average_score}%</td>
                     <td>{candidate.average_score}%</td>
@@ -330,6 +344,9 @@ export default function RecruiterDashboard() {
                 <div>
                   <strong>{candidate.full_name || candidate.email}</strong>
                   <p className="muted">{candidate.total_interviews} interviews</p>
+                  {candidate.applied_roles && candidate.applied_roles.length > 0 && (
+                    <p className="muted" style={{ fontSize: '12px' }}>Applied: {candidate.applied_roles.join(', ')}</p>
+                  )}
                 </div>
                 <span className="pill">{candidate.average_score}% ready</span>
               </div>
@@ -342,6 +359,78 @@ export default function RecruiterDashboard() {
           </div>
         </Card>
       </div>
+
+      <Card>
+        <SectionHead title="Detailed Candidate Reports" description="Comprehensive performance data for all candidates including skills, projects, and interview history." />
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Skills</th>
+                <th>Projects</th>
+                <th>Experience</th>
+                <th>Interview History</th>
+                <th>Applied Roles</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {candidates.length === 0 ? (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px' }}>
+                    <span className="muted">No candidates registered yet.</span>
+                  </td>
+                </tr>
+              ) : (
+                candidates.map((candidate) => (
+                  <tr key={candidate.id}>
+                    <td>{candidate.full_name || candidate.email}</td>
+                    <td>{candidate.email}</td>
+                    <td>
+                      {candidate.profile && candidate.profile.skills && candidate.profile.skills.length > 0
+                        ? candidate.profile.skills.join(', ')
+                        : <span className="muted">No skills</span>
+                      }
+                    </td>
+                    <td>
+                      {candidate.profile && candidate.profile.projects && candidate.profile.projects.length > 0
+                        ? candidate.profile.projects.map(p => p.name).join(', ')
+                        : <span className="muted">No projects</span>
+                      }
+                    </td>
+                    <td>
+                      {candidate.profile && candidate.profile.experience && candidate.profile.experience.length > 0
+                        ? candidate.profile.experience.map(e => `${e.company} - ${e.role}`).join(', ')
+                        : <span className="muted">No experience</span>
+                      }
+                    </td>
+                    <td>
+                      {candidate.interview_history && candidate.interview_history.length > 0
+                        ? candidate.interview_history.map(h => `${h.interview_type}: ${h.total_score}%`).join(', ')
+                        : <span className="muted">No interviews</span>
+                      }
+                    </td>
+                    <td>
+                      {candidate.applied_roles && candidate.applied_roles.length > 0
+                        ? candidate.applied_roles.join(', ')
+                        : <span className="muted">No applications</span>
+                      }
+                    </td>
+                    <td>
+                      <div className="table-actions">
+                        <Link className="mini-action" to={`/candidate-profile/${candidate.id}`} title="View Profile"><Eye size={15} /></Link>
+                        <Link className="mini-action" to={`/recruiter-report/${candidate.id}`} title="View Report"><FileText size={15} /></Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
       <div id="analytics" className="two-col">
         <Card className="chart-card">
