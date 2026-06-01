@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Header
 from pydantic import BaseModel, EmailStr
 from database import db
 from typing import Optional, List, Dict
@@ -107,13 +107,13 @@ async def auth_status():
     return {"status": "authenticated", "message": "Mock authentication - no real auth required"}
 
 @router.put("/auth/candidate/profile")
-async def update_candidate_profile(profile_data: CandidateProfileUpdate):
+async def update_candidate_profile(profile_data: CandidateProfileUpdate, x_user_id: Optional[str] = Header(None)):
     """Update candidate profile with their details"""
     try:
         print(f"Received profile update request: {profile_data}")
 
-        # Get current user (mock - in production, get from JWT token)
-        user_id = "00000000-0000-0000-0000-000000000000"
+        # Get current user (from header or fallback to mock)
+        user_id = x_user_id or "00000000-0000-0000-0000-000000000000"
 
         if not db.client:
             print("Database not connected, returning mock success")
@@ -263,11 +263,11 @@ async def update_candidate_profile(profile_data: CandidateProfileUpdate):
         }
 
 @router.get("/auth/candidate/profile")
-async def get_candidate_profile():
+async def get_candidate_profile(x_user_id: Optional[str] = Header(None)):
     """Get current candidate's profile"""
     try:
-        # Get current user (mock - in production, get from JWT token)
-        user_id = "00000000-0000-0000-0000-000000000000"
+        # Get current user (from header or fallback to mock)
+        user_id = x_user_id or "00000000-0000-0000-0000-000000000000"
 
         profile = db.get_candidate_profile(user_id)
         user = db.client.table('users').select('*').eq('id', user_id).execute()

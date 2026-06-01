@@ -44,3 +44,11 @@ export const submitDSASolution = async (data) => {
   const response = await api.post('/interview/dsa/submit', data)
   return response.data
 }
+
+export const transcribeAudio = async (audioBlob) => {
+  const formData = new FormData()
+  formData.append('audio', audioBlob, 'recording.webm')
+  
+  const response = await api.post('/interview/transcribe', formData)
+  return response.data
+}

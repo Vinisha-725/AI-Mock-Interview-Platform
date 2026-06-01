@@ -15,7 +15,13 @@ import RecruiterReport from './pages/RecruiterReport'
 import RecruiterSettings from './pages/RecruiterSettings'
 import Profile from './pages/Profile'
 
+import { useEffect } from 'react'
+
 function App() {
+  useEffect(() => {
+    document.documentElement.classList.remove('light-theme')
+  }, [])
+
   return (
     <Router>
       <Routes>

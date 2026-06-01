@@ -1,7 +1,9 @@
 from datetime import datetime, timezone
 from typing import Dict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File
+import tempfile
+import os
 
 from database import db
 from models import (
@@ -446,4 +448,27 @@ async def submit_dsa_solution(req: DSASubmissionRequest):
         "interview_ended": interview_ended,
         "end_reason": end_reason
     }
+@router.post("/interview/transcribe")
+async def transcribe_audio_endpoint(audio: UploadFile = File(...)):
+    """Transcribe an uploaded audio file using Whisper API"""
+    try:
+        content = await audio.read()
+        suffix = os.path.splitext(audio.filename)[1] if audio.filename else ".webm"
+        if not suffix:
+            suffix = ".webm"
+            
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(content)
+            tmp_path = tmp.name
 
+        try:
+            transcript = openai_service.transcribe_audio(tmp_path)
+        finally:
+            os.remove(tmp_path)
+
+        if transcript is None:
+            raise HTTPException(status_code=500, detail=openai_service.get_last_error() or "Transcription failed")
+            
+        return {"text": transcript}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

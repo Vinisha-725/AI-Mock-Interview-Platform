@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, Header
 
 from database import db
 from models import ResumeUploadResponse
@@ -28,7 +28,15 @@ async def upload_resume(
 
     try:
         raw_text = resume_parser.extract_text(file_content, filename)
-        result = resume_parser.parse_resume(file_content, filename)
+        parsed_dict = resume_parser.parse_resume(file_content, filename)
+        result = ResumeUploadResponse(
+            skills=parsed_dict.get("skills", []),
+            projects=parsed_dict.get("projects", []),
+            experience=parsed_dict.get("experience", []),
+            education=parsed_dict.get("education", []),
+            techStack=parsed_dict.get("tech_stack", []),
+            certifications=parsed_dict.get("certifications", []),
+        )
         print(f"=== PARSED RESULT ===")
         print(f"Skills: {result.skills}")
         print(f"Tech Stack: {result.techStack}")
@@ -75,12 +83,12 @@ async def upload_resume(
 
 
 @router.get("/resume/profile")
-async def get_candidate_profile():
+async def get_candidate_profile(x_user_id: Optional[str] = Header(None)):
     if not db.client:
         raise HTTPException(status_code=404, detail="Candidate profile not found")
 
-    # Temporarily handled by mock data until auth context is fully connected
-    user_id = "00000000-0000-0000-0000-000000000000"
+    # Use header or fallback to mock
+    user_id = x_user_id or "00000000-0000-0000-0000-000000000000"
     profile = db.get_candidate_profile(user_id)
 
     if not profile:

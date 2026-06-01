@@ -203,12 +203,65 @@ class OpenAIService:
             source=self.provider,
         )
 
-    def _request_json(self, instructions: str, prompt: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        if self.provider == "ollama":
-            return self._request_ollama_json(instructions, prompt)
-        return self._request_openai_json(instructions, prompt)
+    def transcribe_audio(self, audio_file_path: str) -> Optional[str]:
+        if not self.api_key:
+            # Fallback for local testing without an API key
+            return "This is a simulated transcription because no OpenAI API key was found in the backend. To enable real cloud transcription, please add OPENAI_API_KEY to your environment variables."
+            
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=self.api_key)
+            with open(audio_file_path, "rb") as audio_file:
+                transcript = client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file
+                )
+            return transcript.text
+        except Exception as e:
+            self.last_error = f"Audio transcription failed: {e}"
+            print(self.last_error)
+            return None
 
-    def _request_openai_json(self, instructions: str, prompt: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+
+    def generate_coaching_report(self, candidate_profile: Dict[str, Any], history: List[Dict[str, Any]], answers: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        if not self.is_configured():
+            return None
+
+        instructions = (
+            "You are an expert technical recruiter and career coach. Based on the candidate's profile, "
+            "past interview sessions, and answers, generate a personalized career report and 3-week roadmap. "
+            "Return ONLY JSON: readiness_score (0-100), technical_score (0-100), communication_score (0-100), "
+            "confidence_score (0-100), attention_score (0-100), timing_score (0-100), "
+            "strengths (list of 3 strings), weaknesses (list of 3 strings), ai_focus_area (string), "
+            "target_role (string), readiness_goal (string), roadmap (list of 3 dicts with 'week' e.g. 'Week 1', and 'focus'), "
+            "and recommendations (list of 3 actionable strings)."
+        )
+
+        prompt = {
+            "profile": {
+                "skills": candidate_profile.get("skills", [])[:15],
+                "projects": candidate_profile.get("projects", [])[:2],
+                "experience": candidate_profile.get("experience", [])[:2],
+            },
+            "history_summary": [
+                {"score": h.get("total_score"), "type": h.get("interview_type")} 
+                for h in history[:3]
+            ],
+            "recent_answers": [
+                {"score": a.get("score"), "feedback": a.get("feedback")} 
+                for a in answers[:5]
+            ]
+        }
+
+        data = self._request_json(instructions, prompt, max_tokens=700)
+        return data
+
+    def _request_json(self, instructions: str, prompt: Dict[str, Any], max_tokens: int = 280) -> Optional[Dict[str, Any]]:
+        if self.provider == "ollama":
+            return self._request_ollama_json(instructions, prompt, max_tokens)
+        return self._request_openai_json(instructions, prompt, max_tokens)
+
+    def _request_openai_json(self, instructions: str, prompt: Dict[str, Any], max_tokens: int = 280) -> Optional[Dict[str, Any]]:
         body = {
             "model": self.model,
             "messages": [
@@ -217,7 +270,7 @@ class OpenAIService:
             ],
             "response_format": {"type": "json_object"},
             "temperature": 0.7,
-            "max_tokens": 280,
+            "max_tokens": max_tokens,
         }
         request = urllib.request.Request(
             self.endpoint,
@@ -246,8 +299,17 @@ class OpenAIService:
         text = self._extract_output_text(payload)
         return self._parse_json_text(text)
 
-    def _request_ollama_json(self, instructions: str, prompt: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def _request_ollama_json(self, instructions: str, prompt: Dict[str, Any], max_tokens: int = 280) -> Optional[Dict[str, Any]]:
         is_resume_analysis = "match_score" in instructions
+        is_coaching = "readiness_score" in instructions
+        
+        num_ctx = 2048
+        if is_resume_analysis: num_ctx = 1536
+        elif is_coaching: num_ctx = 3072
+        
+        num_predict = max_tokens
+        if is_resume_analysis: num_predict = 130
+        
         body = {
             "model": self.ollama_model,
             "stream": False,
@@ -258,8 +320,8 @@ class OpenAIService:
             "format": "json",
             "options": {
                 "temperature": 0.45,
-                "num_ctx": 1536 if is_resume_analysis else 2048,
-                "num_predict": 130 if is_resume_analysis else 90,
+                "num_ctx": num_ctx,
+                "num_predict": num_predict,
             },
         }
         request = urllib.request.Request(

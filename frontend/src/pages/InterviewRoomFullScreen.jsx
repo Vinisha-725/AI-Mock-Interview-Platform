@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bot, Clock3, Mic, MicOff, Send, X, Volume2, AlertCircle, CheckCircle2, Video, VideoOff } from 'lucide-react'
-import { startInterview, submitAnswer, endInterview, runDSACode, submitDSASolution } from '../services/interview'
+import { startInterview, submitAnswer, endInterview, runDSACode, submitDSASolution, transcribeAudio } from '../services/interview'
 
 export default function InterviewRoomFullScreen() {
   const user = JSON.parse(localStorage.getItem('hiresense_user') || 'null')
@@ -34,9 +34,13 @@ export default function InterviewRoomFullScreen() {
   const [dsaFeedbacks, setDsaFeedbacks] = useState({}) // q_id -> {score, feedback, is_correct, test_cases}
   const [dsaRunning, setDsaRunning] = useState(false)
   const [dsaSubmitting, setDsaSubmitting] = useState(false)
+  const [useFallbackAudio, setUseFallbackAudio] = useState(false)
+  const [isTranscribing, setIsTranscribing] = useState(false)
   
   const recognitionRef = useRef(null)
   const videoRef = useRef(null)
+  const mediaRecorderRef = useRef(null)
+  const audioChunksRef = useRef([])
 
   useEffect(() => {
     if (isRecruiter) {
@@ -91,22 +95,37 @@ export default function InterviewRoomFullScreen() {
         let finalTranscript = ''
 
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript
+          const text = event.results[i][0].transcript
           if (event.results[i].isFinal) {
-            finalTranscript += transcript
+            finalTranscript += text
           } else {
-            interimTranscript += transcript
+            interimTranscript += text
           }
         }
 
-        setTranscript(finalTranscript || interimTranscript)
         if (finalTranscript) {
-          setAnswer(prev => prev + ' ' + finalTranscript)
+          setAnswer(prev => prev + (prev && !prev.endsWith(' ') ? ' ' : '') + finalTranscript)
+          setTranscript('')
+        } else {
+          setTranscript(interimTranscript)
         }
       }
 
       recognitionRef.current.onerror = (event) => {
         console.error('Speech recognition error:', event.error)
+        if (event.error === 'network') {
+          console.warn('Network error: Browser blocked speech recognition. Seamlessly falling back to cloud audio transcription.')
+          setUseFallbackAudio(true)
+          setIsListening(false)
+          setIsRecording(false)
+          // Automatically start the fallback recording since the user already intended to record
+          startFallbackRecording()
+          return
+        } else if (event.error === 'not-allowed') {
+          alert('Microphone access was denied. Please allow microphone permissions in your browser settings.')
+        } else if (event.error !== 'no-speech') {
+          alert(`Speech recognition error: ${event.error}`)
+        }
         setIsListening(false)
         setIsRecording(false)
       }
@@ -167,9 +186,64 @@ export default function InterviewRoomFullScreen() {
     }
   }
 
+  const startFallbackRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      mediaRecorderRef.current = new MediaRecorder(stream)
+      audioChunksRef.current = []
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data)
+      }
+
+      mediaRecorderRef.current.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        stream.getTracks().forEach(track => track.stop())
+        
+        setIsTranscribing(true)
+        try {
+          const result = await transcribeAudio(audioBlob)
+          if (result && result.text) {
+            setAnswer(prev => prev + (prev && !prev.endsWith(' ') ? ' ' : '') + result.text)
+          }
+        } catch (err) {
+          console.error('Transcription error:', err)
+          alert('Failed to transcribe audio. Please ensure the backend is configured with an OpenAI API key or type your answer.')
+        } finally {
+          setIsTranscribing(false)
+        }
+      }
+
+      mediaRecorderRef.current.start()
+      setIsRecording(true)
+      setIsListening(true)
+    } catch (err) {
+      console.error('Microphone access denied for fallback:', err)
+      alert('Microphone access is required to record audio.')
+    }
+  }
+
+  const stopFallbackRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop()
+      setIsRecording(false)
+      setIsListening(false)
+    }
+  }
+
   const toggleRecording = () => {
+    if (useFallbackAudio) {
+      if (isRecording) {
+        stopFallbackRecording()
+      } else {
+        startFallbackRecording()
+      }
+      return
+    }
+
     if (!recognitionRef.current) {
-      alert('Speech recognition is not supported in your browser')
+      setUseFallbackAudio(true)
+      if (!isRecording) startFallbackRecording()
       return
     }
 
@@ -177,15 +251,17 @@ export default function InterviewRoomFullScreen() {
       recognitionRef.current.stop()
       setIsRecording(false)
       setIsListening(false)
-      // When stopping recording, ensure transcript is added to answer
-      if (transcript.trim()) {
-        setAnswer(prev => prev.trim() + ' ' + transcript.trim())
-      }
     } else {
-      recognitionRef.current.start()
-      setIsRecording(true)
-      setIsListening(true)
-      setTranscript('')
+      try {
+        recognitionRef.current.start()
+        setIsRecording(true)
+        setIsListening(true)
+        setTranscript('')
+      } catch (err) {
+        console.warn('Speech API start failed, falling back to MediaRecorder', err)
+        setUseFallbackAudio(true)
+        startFallbackRecording()
+      }
     }
   }
 
@@ -249,6 +325,8 @@ export default function InterviewRoomFullScreen() {
     if (interviewId) {
       try {
         await endInterview(interviewId)
+        const { clearReportCache } = await import('../services/analytics')
+        clearReportCache()
       } catch (error) {
         console.error('Failed to end interview:', error)
       }
@@ -529,7 +607,7 @@ export default function InterviewRoomFullScreen() {
                   <option value="java">Java (JDK 17)</option>
                 </select>
               </div>
-              <span style={{ fontSize: 12, color: '#3b82f6', fontWeight: 'bold' }}>Monokai Dark Theme</span>
+              <span style={{ fontSize: 12, color: '#3b82f6', fontWeight: 'bold' }}>Code Editor</span>
             </div>
 
             {/* Code Textarea */}
@@ -718,7 +796,7 @@ export default function InterviewRoomFullScreen() {
           </div>
           <div className="ai-status">
             <h2>AI Interviewer</h2>
-            <p>{isSubmitting ? 'Generating next question...' : isListening ? 'Processing your response...' : 'Waiting for your answer...'}</p>
+            <p>{isTranscribing ? 'Transcribing your audio in the cloud...' : isSubmitting ? 'Generating next question...' : isRecording ? 'Recording your voice... Click Stop Recording when finished.' : 'Waiting for your answer...'}</p>
           </div>
         </div>
 
@@ -781,19 +859,25 @@ export default function InterviewRoomFullScreen() {
                 </div>
               )}
 
+              {isRecording && transcript && (
+                <div style={{ padding: '8px 12px', background: '#0f172a', border: '1px solid #1e293b', borderRadius: '6px', color: '#38bdf8', fontSize: '14px', fontStyle: 'italic', marginBottom: '10px' }}>
+                  Listening: {transcript}
+                </div>
+              )}
+
               <div className="answer-actions">
                 <button
                   className={`voice-btn ${isRecording ? 'recording' : ''}`}
                   onClick={toggleRecording}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isTranscribing}
                 >
                   {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
-                  {isRecording ? 'Stop Recording' : 'Voice Input'}
+                  {isRecording ? 'Stop Recording' : isTranscribing ? 'Transcribing...' : 'Voice Input'}
                 </button>
                 <button
                   className="submit-btn"
                   onClick={submitAnswerHandler}
-                  disabled={!answer.trim() || isSubmitting}
+                  disabled={!answer.trim() || isSubmitting || isTranscribing}
                 >
                   <Send size={20} />
                   {isSubmitting ? 'Generating...' : 'Submit Answer'}
