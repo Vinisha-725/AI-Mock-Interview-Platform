@@ -68,9 +68,11 @@ class DSAQuestion(BaseModel):
 
 
 class InterviewStartRequest(BaseModel):
+    user_id: str
     skills: List[str]
     projects: List[Project]
     jd_text: Optional[str] = None
+    company_name: Optional[str] = None
     interview_type: str = "ai"
 
 
@@ -103,10 +105,12 @@ class AnswerResponse(BaseModel):
 
 class InterviewSession(BaseModel):
     interview_id: str
+    user_id: str
     interview_type: str
     skills: List[str]
     projects: List[Project]
     jd_text: Optional[str]
+    company_name: Optional[str] = None
     start_time: datetime
     end_time: Optional[datetime] = None
     duration_minutes: int
@@ -122,6 +126,8 @@ class InterviewSession(BaseModel):
 
 class SessionHistory(BaseModel):
     session_id: str
+    user_id: str
+    company_name: Optional[str] = None
     interview_type: str
     date: datetime
     duration_minutes: int
@@ -150,3 +156,8 @@ class DSASubmissionRequest(BaseModel):
     language: str
     code: str
 
+
+class RecruiterProfileUpdate(BaseModel):
+    user_id: str
+    company_name: str
+    company_description: str

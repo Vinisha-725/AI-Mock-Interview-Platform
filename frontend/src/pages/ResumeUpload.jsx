@@ -115,6 +115,7 @@ export default function ResumeUpload() {
   const [file, setFile] = useState(null)
   const [jdFile, setJdFile] = useState(null)
   const [jdText, setJdText] = useState('')
+  const [companyName, setCompanyName] = useState('')
   const [jdInputMode, setJdInputMode] = useState('file') // 'file' or 'text'
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -147,6 +148,7 @@ export default function ResumeUpload() {
         skills: response.skills || [],
         projects: response.projects || [],
         jd_text: response.jd_text || activeJdText,
+        company_name: companyName
       }))
       setData(response)
     } catch (err) {
@@ -215,6 +217,27 @@ export default function ResumeUpload() {
               </div>
             )}
           </div>
+          
+          <div className="jd-input-section" style={{ marginTop: 14 }}>
+            <div className="text-input-zone">
+              <input
+                type="text"
+                placeholder="Target Company (Optional) e.g. Google"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                style={{ 
+                  width: '100%', 
+                  padding: '12px 16px', 
+                  borderRadius: '8px', 
+                  background: 'rgba(30, 41, 59, 0.4)', 
+                  border: '1px solid rgba(148, 163, 184, 0.2)', 
+                  color: '#e2e8f0',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+          </div>
+
           {error && (
             <div className="activity-item" style={{ marginTop: 14, color: '#fecdd3' }}>
               <AlertCircle size={18} />

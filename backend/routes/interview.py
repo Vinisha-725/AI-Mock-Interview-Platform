@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict
 
 from fastapi import APIRouter, HTTPException
@@ -28,8 +28,7 @@ session_history: Dict[str, SessionHistory] = {}
 interview_questions: Dict[str, Dict[str, Question]] = {}
 
 
-def get_user_id() -> str:
-    return "00000000-0000-0000-0000-000000000000"
+
 
 
 def persist_session(session: InterviewSession) -> None:
@@ -37,10 +36,11 @@ def persist_session(session: InterviewSession) -> None:
         return
     try:
         payload = session.model_dump()
-        payload["user_id"] = get_user_id()
+        payload["user_id"] = session.user_id
         payload["start_time"] = session.start_time.isoformat()
         payload["end_time"] = session.end_time.isoformat() if session.end_time else None
         payload["projects"] = [project.model_dump() for project in session.projects]
+        payload.pop("dsa_questions", None)  # Not stored directly in interview_sessions table
         if db.get_interview_session(session.interview_id):
             db.update_interview_session(session.interview_id, payload)
         else:
@@ -49,14 +49,24 @@ def persist_session(session: InterviewSession) -> None:
         print(f"Could not persist interview session: {exc}")
 
 
-def persist_session_history(history: SessionHistory) -> None:
+def persist_history(history: SessionHistory) -> None:
     if not db.client:
         return
     try:
-        payload = history.model_dump()
-        payload["user_id"] = get_user_id()
-        payload["date"] = history.date.isoformat()
-        db.create_session_history(payload)
+        session_record = db.get_interview_session(history.session_id)
+        if not session_record:
+            return
+            
+        payload = history.model_dump(mode="json")
+        payload["interview_id"] = history.session_id
+        payload["session_id"] = session_record["id"]
+        
+        # Check if we already have this history
+        existing = db.client.table("session_history").select("*").eq("interview_id", history.session_id).execute()
+        if existing.data:
+            db.client.table("session_history").update(payload).eq("interview_id", history.session_id).execute()
+        else:
+            db.create_session_history(payload)
     except Exception as exc:
         print(f"Could not persist session history: {exc}")
 
@@ -82,18 +92,20 @@ def persist_question(interview_id: str, question: Question) -> None:
 @router.post("/interview/start", response_model=InterviewStartResponse)
 async def start_interview(request: InterviewStartRequest):
     interview_id = ai_service.generate_interview_id()
-    start_time = datetime.now()
+    start_time = datetime.now(timezone.utc)
 
     # If it is a DSA coding challenge, it gets exactly 1 hour (60 mins)
     duration_mins = 60 if request.interview_type == "dsa" else 15
 
     session = InterviewSession(
         interview_id=interview_id,
+        user_id=request.user_id,
         interview_type=request.interview_type,
         skills=request.skills,
         projects=request.projects,
         jd_text=request.jd_text,
-        start_time=start_time,
+        company_name=request.company_name,
+        start_time=datetime.now(timezone.utc),
         duration_minutes=duration_mins,
         questions_asked=[],
         answers_given={},
@@ -181,7 +193,7 @@ async def submit_answer(submission: AnswerSubmission):
     session.total_score = sum(session.scores) // len(session.scores) if session.scores else 0
     session.consecutive_wrong_answers = session.consecutive_wrong_answers + 1 if not is_correct else 0
 
-    duration_minutes = (datetime.now() - session.start_time).total_seconds() / 60
+    duration_minutes = (datetime.now(timezone.utc) - session.start_time).total_seconds() / 60
     should_continue = ai_service.should_continue(
         question_count=len(session.questions_asked),
         consecutive_wrong=session.consecutive_wrong_answers,
@@ -234,9 +246,11 @@ async def submit_answer(submission: AnswerSubmission):
 
     if interview_ended:
         session.status = "completed" if end_reason == "Question limit reached" else "terminated"
-        session.end_time = datetime.now()
+        session.end_time = datetime.now(timezone.utc)
         history = SessionHistory(
             session_id=interview_id,
+            user_id=session.user_id,
+            company_name=session.company_name,
             interview_type=session.interview_type,
             date=session.start_time,
             duration_minutes=int(duration_minutes),
@@ -245,7 +259,7 @@ async def submit_answer(submission: AnswerSubmission):
             status=session.status,
         )
         session_history[interview_id] = history
-        persist_session_history(history)
+        persist_history(history)
 
     persist_session(session)
 
@@ -314,10 +328,12 @@ async def end_interview(interview_id: str):
         raise HTTPException(status_code=404, detail="Interview session not found")
 
     session.status = "terminated"
-    session.end_time = datetime.now()
+    session.end_time = datetime.now(timezone.utc)
     duration_minutes = (session.end_time - session.start_time).total_seconds() / 60
     history = SessionHistory(
         session_id=interview_id,
+        user_id=session.user_id,
+        company_name=session.company_name,
         interview_type=session.interview_type,
         date=session.start_time,
         duration_minutes=int(duration_minutes),
@@ -326,7 +342,7 @@ async def end_interview(interview_id: str):
         status=session.status,
     )
     session_history[interview_id] = history
-    persist_session_history(history)
+    persist_history(history)
     persist_session(session)
     return {"message": "Interview ended", "session_id": interview_id}
 
@@ -402,12 +418,14 @@ async def submit_dsa_solution(req: DSASubmissionRequest):
         interview_ended = True
         end_reason = "All questions attempted"
         session.status = "completed"
-        session.end_time = datetime.now()
+        session.end_time = datetime.now(timezone.utc)
         
         # Save to history
         duration_minutes = (session.end_time - session.start_time).total_seconds() / 60
         history = SessionHistory(
             session_id=req.interview_id,
+            user_id=session.user_id,
+            company_name=session.company_name,
             interview_type=session.interview_type,
             date=session.start_time,
             duration_minutes=int(duration_minutes),
@@ -416,7 +434,7 @@ async def submit_dsa_solution(req: DSASubmissionRequest):
             status=session.status,
         )
         session_history[req.interview_id] = history
-        persist_session_history(history)
+        persist_history(history)
         persist_session(session)
 
     return {

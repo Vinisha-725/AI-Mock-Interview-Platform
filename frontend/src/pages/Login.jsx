@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowRight, BriefcaseBusiness, Mail, ShieldCheck, Sparkles, UserRound } from 'lucide-react'
 import { Logo } from '../components/PremiumUI'
+import api from '../services/api'
 
 const initialForm = {
   name: '',
@@ -29,7 +30,7 @@ export default function Login() {
     setError('')
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
 
     if (isRegister && form.name.trim().length < 2) {
@@ -62,18 +63,53 @@ export default function Login() {
       return
     }
 
-    const user = {
-      name: isRegister ? form.name.trim() : form.email.split('@')[0],
-      email: form.email,
-      role: form.role,
-      company: isRecruiter ? form.company.trim() : '',
-      recruiterTitle: isRecruiter ? form.recruiterTitle.trim() : '',
-      hiringFocus: isRecruiter ? form.hiringFocus.trim() : '',
-      signedInAt: new Date().toISOString(),
+    try {
+      if (isRegister) {
+        const payload = {
+          email: form.email,
+          password: form.password,
+          full_name: form.name.trim(),
+          role: form.role
+        }
+        const res = await api.post('/auth/register', payload)
+        
+        const user = {
+          id: res.data.id,
+          name: res.data.full_name || form.email.split('@')[0],
+          email: res.data.email,
+          role: res.data.role,
+          company: isRecruiter ? form.company.trim() : '',
+          recruiterTitle: isRecruiter ? form.recruiterTitle.trim() : '',
+          hiringFocus: isRecruiter ? form.hiringFocus.trim() : '',
+          signedInAt: res.data.created_at,
+        }
+        localStorage.setItem('hiresense_user', JSON.stringify(user))
+        navigate(user.role === 'recruiter' ? '/admin' : '/candidate-dashboard')
+      } else {
+        const payload = {
+          email: form.email,
+          password: form.password
+        }
+        const res = await api.post('/auth/login', payload)
+        
+        const backendUser = res.data.user
+        const user = {
+          id: backendUser.id,
+          name: backendUser.full_name || backendUser.email.split('@')[0],
+          email: backendUser.email,
+          role: backendUser.role,
+          company: isRecruiter ? form.company.trim() : '',
+          recruiterTitle: isRecruiter ? form.recruiterTitle.trim() : '',
+          hiringFocus: isRecruiter ? form.hiringFocus.trim() : '',
+          signedInAt: new Date().toISOString(),
+        }
+        localStorage.setItem('hiresense_user', JSON.stringify(user))
+        navigate(user.role === 'recruiter' ? '/admin' : '/candidate-dashboard')
+      }
+    } catch (err) {
+      console.error(err)
+      setError(err.response?.data?.detail || 'Authentication failed. Please try again.')
     }
-
-    localStorage.setItem('hiresense_user', JSON.stringify(user))
-    navigate(form.role === 'recruiter' ? '/admin' : '/candidate-dashboard')
   }
 
   return (

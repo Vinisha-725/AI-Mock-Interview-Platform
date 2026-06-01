@@ -136,9 +136,11 @@ export default function InterviewRoomFullScreen() {
     
     try {
       const response = await startInterview({
+        user_id: user.id,
         skills: resumeContext.skills || [],
         projects: resumeContext.projects || [],
         jd_text: resumeContext.jd_text || '',
+        company_name: resumeContext.company_name || null,
         interview_type: type
       })
       

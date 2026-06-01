@@ -160,7 +160,7 @@ class AIService:
         available_questions = [q for q in self.question_bank[category] if q.id not in self.used_questions[session_id]]
         
         if not available_questions:
-            # Reset used questions for this category if all have been used
+            
             self.used_questions[session_id] = {qid for qid in self.used_questions[session_id] if qid not in [q.id for q in self.question_bank[category]]}
             available_questions = self.question_bank[category]
         

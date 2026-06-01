@@ -41,7 +41,9 @@ export default function RecruiterDashboard() {
 
   const fetchCandidates = async () => {
     try {
-      const response = await api.get('/recruiter/candidates')
+      const user = JSON.parse(localStorage.getItem('hiresense_user') || 'null')
+      if (!user) return;
+      const response = await api.get(`/recruiter/candidates?user_id=${user.id}`)
       setCandidates(response.data)
       // Auto-shortlist candidates with average score >= 80
       const highScorers = response.data
@@ -57,7 +59,9 @@ export default function RecruiterDashboard() {
 
   const fetchAnalytics = async () => {
     try {
-      const response = await api.get('/recruiter/analytics')
+      const user = JSON.parse(localStorage.getItem('hiresense_user') || 'null')
+      if (!user) return;
+      const response = await api.get(`/recruiter/analytics?user_id=${user.id}`)
       setAnalytics(response.data)
     } catch (error) {
       console.error('Failed to fetch analytics:', error)

@@ -10,14 +10,11 @@ from services.resume_parser import resume_parser
 router = APIRouter()
 
 
-def get_user_id() -> str:
-    return "00000000-0000-0000-0000-000000000000"
-
-
 @router.post("/resume/upload", response_model=ResumeUploadResponse)
 async def upload_resume(
     file: UploadFile = File(...),
     jd_text: str = Form(""),
+    user_id: str = Form(None),
     jd_file: Optional[UploadFile] = File(None),
 ):
     filename = file.filename or ""
@@ -30,6 +27,7 @@ async def upload_resume(
         raise HTTPException(status_code=400, detail="Uploaded resume is empty.")
 
     try:
+        raw_text = resume_parser.extract_text(file_content, filename)
         result = resume_parser.parse_resume(file_content, filename)
         print(f"=== PARSED RESULT ===")
         print(f"Skills: {result.skills}")
@@ -55,12 +53,11 @@ async def upload_resume(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    if db.client:
+    if db.client and user_id:
         try:
-            user_id = get_user_id()
             parsed = result.model_dump()
             profile_data = {
-                "resume_text": "",
+                "resume_text": raw_text,
                 "skills": parsed.get("skills", []),
                 "projects": parsed.get("projects", []),
                 "experience": parsed.get("experience", []),
@@ -82,7 +79,8 @@ async def get_candidate_profile():
     if not db.client:
         raise HTTPException(status_code=404, detail="Candidate profile not found")
 
-    user_id = get_user_id()
+    # Temporarily handled by mock data until auth context is fully connected
+    user_id = "00000000-0000-0000-0000-000000000000"
     profile = db.get_candidate_profile(user_id)
 
     if not profile:

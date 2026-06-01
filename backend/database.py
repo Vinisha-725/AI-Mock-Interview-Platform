@@ -1,4 +1,21 @@
 import os
+import httpx
+
+# Monkeypatch httpx to support the 'proxy' parameter in older versions (like 0.25.x)
+# which was renamed/changed from 'proxies' in 0.26.0. This prevents a TypeError in gotrue.
+original_client_init = httpx.Client.__init__
+def custom_client_init(self, *args, **kwargs):
+    if 'proxy' in kwargs:
+        kwargs['proxies'] = kwargs.pop('proxy')
+    original_client_init(self, *args, **kwargs)
+httpx.Client.__init__ = custom_client_init
+
+original_async_client_init = httpx.AsyncClient.__init__
+def custom_async_client_init(self, *args, **kwargs):
+    if 'proxy' in kwargs:
+        kwargs['proxies'] = kwargs.pop('proxy')
+    original_async_client_init(self, *args, **kwargs)
+httpx.AsyncClient.__init__ = custom_async_client_init
 
 try:
     from dotenv import load_dotenv
@@ -16,7 +33,22 @@ supabase_key = os.getenv("SUPABASE_KEY")
 
 supabase = None
 if supabase_url and supabase_key and create_client:
-    supabase = create_client(supabase_url, supabase_key)
+    import re
+    # Temporary monkeypatch to support new Supabase key formats (sb_secret_..., sb_publishable_...)
+    # in older versions of supabase-py that strictly validate JWT keys using regex.
+    original_re_match = re.match
+    def custom_re_match(pattern, string, flags=0):
+        if pattern == r"^[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*$":
+            if string and (string.startswith("sb_secret_") or string.startswith("sb_publishable_")):
+                class DummyMatch:
+                    pass
+                return DummyMatch()
+        return original_re_match(pattern, string, flags)
+    re.match = custom_re_match
+    try:
+        supabase = create_client(supabase_url, supabase_key)
+    finally:
+        re.match = original_re_match
 
 
 class Database:
