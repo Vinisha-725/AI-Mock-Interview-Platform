@@ -20,7 +20,6 @@ A full-stack AI-powered interview platform with Supabase database integration. B
 - Node.js (v18 or higher)
 - Python (v3.9 or higher)
 - npm or yarn
-- Supabase account (free tier works)
 
 ### 1. Supabase Setup
 
@@ -175,6 +174,3 @@ See `SUPABASE_SETUP.md` for complete database schema and setup instructions.
 - Mobile app development
 - Integration with ATS systems
 
-## License
-
-MIT License
