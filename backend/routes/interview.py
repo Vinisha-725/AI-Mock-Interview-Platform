@@ -66,7 +66,7 @@ def persist_history(history: SessionHistory) -> None:
         # Check if we already have this history
         existing = db.client.table("session_history").select("*").eq("interview_id", history.session_id).execute()
         if existing.data:
-            db.client.table("session_history").update(payload).eq("interview_id", history.session_id).execute()
+            db.update_session_history(history.session_id, payload)
         else:
             db.create_session_history(payload)
     except Exception as exc:

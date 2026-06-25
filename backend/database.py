@@ -1,21 +1,25 @@
 import os
 import httpx
+import inspect
 
 # Monkeypatch httpx to support the 'proxy' parameter in older versions (like 0.25.x)
 # which was renamed/changed from 'proxies' in 0.26.0. This prevents a TypeError in gotrue.
 original_client_init = httpx.Client.__init__
+client_params = inspect.signature(original_client_init).parameters
 def custom_client_init(self, *args, **kwargs):
-    if 'proxy' in kwargs:
+    if 'proxy' in kwargs and 'proxy' not in client_params and 'proxies' in client_params:
         kwargs['proxies'] = kwargs.pop('proxy')
     original_client_init(self, *args, **kwargs)
 httpx.Client.__init__ = custom_client_init
 
 original_async_client_init = httpx.AsyncClient.__init__
+async_client_params = inspect.signature(original_async_client_init).parameters
 def custom_async_client_init(self, *args, **kwargs):
-    if 'proxy' in kwargs:
+    if 'proxy' in kwargs and 'proxy' not in async_client_params and 'proxies' in async_client_params:
         kwargs['proxies'] = kwargs.pop('proxy')
     original_async_client_init(self, *args, **kwargs)
 httpx.AsyncClient.__init__ = custom_async_client_init
+
 
 try:
     from dotenv import load_dotenv
@@ -60,6 +64,32 @@ class Database:
             raise RuntimeError("Supabase is not configured")
         return self.client.table(name)
 
+    def _execute_self_healing(self, table_name: str, operation: str, data: dict, *args, **kwargs):
+        try:
+            tbl = self._table(table_name)
+            if operation == 'insert':
+                res = tbl.insert(data).execute()
+            elif operation == 'update':
+                query = tbl.update(data)
+                for key, val in kwargs.items():
+                    query = query.eq(key, val)
+                res = query.execute()
+            return res.data[0] if res.data else None
+        except Exception as e:
+            if "company_name" in str(e) and "company_name" in data:
+                data_copy = data.copy()
+                data_copy.pop("company_name", None)
+                tbl = self._table(table_name)
+                if operation == 'insert':
+                    res = tbl.insert(data_copy).execute()
+                elif operation == 'update':
+                    query = tbl.update(data_copy)
+                    for key, val in kwargs.items():
+                        query = query.eq(key, val)
+                    res = query.execute()
+                return res.data[0] if res.data else None
+            raise e
+
     def get_user_by_email(self, email: str):
         response = self._table("users").select("*").eq("email", email).execute()
         return response.data[0] if response.data else None
@@ -101,20 +131,20 @@ class Database:
         return response.data[0] if response.data else None
 
     def create_interview_session(self, session_data: dict):
-        response = self._table("interview_sessions").insert(session_data).execute()
-        return response.data[0] if response.data else None
+        return self._execute_self_healing("interview_sessions", "insert", session_data)
 
     def update_interview_session(self, interview_id: str, session_data: dict):
-        response = self._table("interview_sessions").update(session_data).eq("interview_id", interview_id).execute()
-        return response.data[0] if response.data else None
+        return self._execute_self_healing("interview_sessions", "update", session_data, interview_id=interview_id)
 
     def get_user_sessions(self, user_id: str):
         response = self._table("interview_sessions").select("*").eq("user_id", user_id).order("start_time", desc=True).execute()
         return response.data
 
     def create_session_history(self, history_data: dict):
-        response = self._table("session_history").insert(history_data).execute()
-        return response.data[0] if response.data else None
+        return self._execute_self_healing("session_history", "insert", history_data)
+
+    def update_session_history(self, interview_id: str, history_data: dict):
+        return self._execute_self_healing("session_history", "update", history_data, interview_id=interview_id)
 
     def get_user_history(self, user_id: str):
         response = self._table("session_history").select("*").eq("user_id", user_id).order("date", desc=True).execute()

@@ -5,7 +5,7 @@ import os
 
 def log_debug(msg):
     try:
-        log_path = r"c:\Users\ASUS\ai-mock\AI-Mock-Interview-Platform\backend\startup.log"
+        log_path = os.path.join(os.path.dirname(__file__), "startup.log")
         with open(log_path, "a", encoding="utf-8") as f:
             f.write(f"[PID {os.getpid()}] {msg}\n")
     except Exception as e:
